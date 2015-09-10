@@ -1,5 +1,5 @@
-#ifndef __LMDB_INTERFACE_H
-#define __LMDB_INTERFACE_H
+#ifndef __LMDB_FOREST_H
+#define __LMDB_FOREST_H
 #include <algorithm>
 #include <stdio.h>
 #include <stdlib.h>
@@ -28,6 +28,7 @@
 #include <map>
 #include "lmdb.h"
 
+#include "annoylib.h"
 #include "protobuf/annoy.pb.h"
 
 #define E(expr) CHECK((rc = (expr)) == MDB_SUCCESS, #expr)
@@ -62,11 +63,30 @@ using namespace std;
  
  */
 
+template<typename S, typename T>
+class AnnoyIndexInterface {
+public:
+  virtual ~AnnoyIndexInterface() {};
+  virtual void add_item(S item, const T* w) = 0;
+  virtual void build(int q) = 0;
+  virtual bool save(const char* filename) = 0;
+  virtual void reinitialize() = 0;
+  virtual void unload() = 0;
+  virtual bool load(const char* filename) = 0;
+  virtual T get_distance(S i, S j) = 0;
+  virtual void get_nns_by_item(S item, size_t n, size_t search_k, vector<S>* result, vector<T>* distances) = 0;
+  virtual void get_nns_by_vector(const T* w, size_t n, size_t search_k, vector<S>* result, vector<T>* distances) = 0;
+  virtual S get_n_items() = 0;
+  virtual void verbose(bool v) = 0;
+  virtual void get_item(S item, vector<T>* v) = 0;
+};
+
 template<typename S, typename T, template<typename, typename, typename> class Distance, class Random>
-class LMDBForest  {
+class AnnoyIndex : public AnnoyIndexInterface<S, T> {
 
   protected:
-  typedef Distance<S, T, Random> D;
+    Random _random;
+    typedef Distance<S, T, Random> D;
     bool _verbose;
  
     
@@ -78,24 +98,23 @@ class LMDBForest  {
     MDB_dbi _dbi_tree;
     MDB_txn* _txn;
   
-    int _dim ; // the dimension of data
-    int _root_count; //number of trees;
+    int _f ; // the dimension of data
+    int _tree_count; //number of trees;
     int _K ; // maximum size of data in each leaf node
 
  public:
 
-    ~LMDBForest()    {
+    ~AnnoyIndex()    {
     }
+    AnnoyIndex(int f, int K, int r) : _random() {
+      _f = f;
+      _tree_count = r;
+      _K = K;
+      _verbose = false;
 
-
-    LMDBForest(int root_count, int K, int dim) {
-      _verbose = true;
       _env = NULL;
       _txn = NULL;
-      _root_count = root_count;
-      _K = K;
-      _dim = dim;
-      set_roots();
+      _set_roots();
     }
     
     
@@ -138,11 +157,49 @@ class LMDBForest  {
     }
     
     //append data into this tree
+  
+    void add_item(S item, const T* w){
+      return;
+    }
+  
+    void build(int q) {
+      return;
+    }
+    bool save(const char* filename) { return true; }
+    void reinitialize() {
+      return;
+    }
+  void unload() {
+    return;
+  }
+  bool load(const char* filename)  {
+    return true;
+  }
+  T get_distance(S i, S j) {
+    return (T) 0.0;
+  }
+  void get_nns_by_item(S item, size_t n, size_t search_k, vector<S>* result, vector<T>* distances) {
+    return;
+  }
+  void get_nns_by_vector(const T* w, size_t n, size_t search_k, vector<S>* result, vector<T>* distances) {
+    return ;
+  }
+  S get_n_items() {
+    return 0;
+  }
+  void verbose(bool v){
+    set_verbose(v);
+  }
+  void get_item(S item, vector<T>* v)  {
+    return;
+  };
+
+
     void add_item(int data_id, data_info& d) {
     
         _add_raw_data(data_id, d);
         
-        for (int i = 0; i < _root_count; i ++ ) {
+        for (int i = 0; i < _tree_count; i ++ ) {
             _add_item_to_tree(i, data_id);
         }
         return;
@@ -163,7 +220,7 @@ class LMDBForest  {
           tree_node new_node;
           tree_node left_node;
           tree_node right_node;
-          D::split(tn, new_node, left_node, right_node, random, _dim );
+          D::split(tn, new_node, left_node, right_node, random, _f );
           _update_tree_node(node_index, new_node);
           _add_node(left_node);
           _add_node(right_node);
@@ -212,7 +269,7 @@ class LMDBForest  {
   protected:
   
     
-    bool set_roots() {
+    bool _set_roots() {
       
       MDB_val key, data;
       MDB_txn *txn;
@@ -224,7 +281,7 @@ class LMDBForest  {
       E(mdb_dbi_open(txn, DBN_ROOT, MDB_CREATE, &dbi));
       
       
-      for (int i = 0; i < _root_count; i ++) {
+      for (int i = 0; i < _tree_count; i ++) {
         key.mv_data = (uint8_t*) & i;
         key.mv_size = sizeof(int);
         char tmp[20];
@@ -241,7 +298,7 @@ class LMDBForest  {
       if (success) {
         MDB_dbi dbi_tree;
         E(mdb_dbi_open(txn, DBN_TREE, MDB_CREATE, &dbi_tree));
-        for (int i = 0; i < _root_count; i ++) {
+        for (int i = 0; i < _tree_count; i ++) {
           key.mv_data = (uint8_t*) & i;
           key.mv_size = sizeof(int);
           tree_node tn;

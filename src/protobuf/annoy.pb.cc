@@ -21,9 +21,6 @@ namespace {
 const ::google::protobuf::Descriptor* data_info_descriptor_ = NULL;
 const ::google::protobuf::internal::GeneratedMessageReflection*
   data_info_reflection_ = NULL;
-const ::google::protobuf::Descriptor* plane_split_descriptor_ = NULL;
-const ::google::protobuf::internal::GeneratedMessageReflection*
-  plane_split_reflection_ = NULL;
 const ::google::protobuf::Descriptor* tree_node_descriptor_ = NULL;
 const ::google::protobuf::internal::GeneratedMessageReflection*
   tree_node_reflection_ = NULL;
@@ -54,21 +51,7 @@ void protobuf_AssignDesc_protobuf_2fannoy_2eproto() {
       ::google::protobuf::DescriptorPool::generated_pool(),
       ::google::protobuf::MessageFactory::generated_factory(),
       sizeof(data_info));
-  plane_split_descriptor_ = file->message_type(1);
-  static const int plane_split_offsets_[1] = {
-  };
-  plane_split_reflection_ =
-    new ::google::protobuf::internal::GeneratedMessageReflection(
-      plane_split_descriptor_,
-      plane_split::default_instance_,
-      plane_split_offsets_,
-      GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(plane_split, _has_bits_[0]),
-      GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(plane_split, _unknown_fields_),
-      -1,
-      ::google::protobuf::DescriptorPool::generated_pool(),
-      ::google::protobuf::MessageFactory::generated_factory(),
-      sizeof(plane_split));
-  tree_node_descriptor_ = file->message_type(2);
+  tree_node_descriptor_ = file->message_type(1);
   static const int tree_node_offsets_[7] = {
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(tree_node, index_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(tree_node, leaf_),
@@ -104,8 +87,6 @@ void protobuf_RegisterTypes(const ::std::string&) {
   ::google::protobuf::MessageFactory::InternalRegisterGeneratedMessage(
     data_info_descriptor_, &data_info::default_instance());
   ::google::protobuf::MessageFactory::InternalRegisterGeneratedMessage(
-    plane_split_descriptor_, &plane_split::default_instance());
-  ::google::protobuf::MessageFactory::InternalRegisterGeneratedMessage(
     tree_node_descriptor_, &tree_node::default_instance());
 }
 
@@ -114,8 +95,6 @@ void protobuf_RegisterTypes(const ::std::string&) {
 void protobuf_ShutdownFile_protobuf_2fannoy_2eproto() {
   delete data_info::default_instance_;
   delete data_info_reflection_;
-  delete plane_split::default_instance_;
-  delete plane_split_reflection_;
   delete tree_node::default_instance_;
   delete tree_node_reflection_;
 }
@@ -129,17 +108,14 @@ void protobuf_AddDesc_protobuf_2fannoy_2eproto() {
   ::google::protobuf::DescriptorPool::InternalAddGeneratedFile(
     "\n\024protobuf/annoy.proto\";\n\tdata_info\022\020\n\004d"
     "ata\030\001 \003(\002B\002\020\001\022\n\n\002id\030\002 \001(\r\022\020\n\010category\030\003 "
-    "\001(\r\"\r\n\013plane_split\"n\n\ttree_node\022\r\n\005index"
-    "\030\001 \002(\r\022\014\n\004leaf\030\002 \002(\010\022\014\n\004left\030\003 \001(\r\022\r\n\005ri"
-    "ght\030\004 \001(\r\022\r\n\005items\030\005 \003(\r\022\r\n\001v\030\006 \003(\002B\002\020\001\022"
-    "\t\n\001t\030\007 \001(\002", 210);
+    "\001(\r\"n\n\ttree_node\022\r\n\005index\030\001 \002(\r\022\014\n\004leaf\030"
+    "\002 \002(\010\022\014\n\004left\030\003 \001(\r\022\r\n\005right\030\004 \001(\r\022\r\n\005it"
+    "ems\030\005 \003(\r\022\r\n\001v\030\006 \003(\002B\002\020\001\022\t\n\001t\030\007 \001(\002", 195);
   ::google::protobuf::MessageFactory::InternalRegisterGeneratedFile(
     "protobuf/annoy.proto", &protobuf_RegisterTypes);
   data_info::default_instance_ = new data_info();
-  plane_split::default_instance_ = new plane_split();
   tree_node::default_instance_ = new tree_node();
   data_info::default_instance_->InitAsDefaultInstance();
-  plane_split::default_instance_->InitAsDefaultInstance();
   tree_node::default_instance_->InitAsDefaultInstance();
   ::google::protobuf::internal::OnShutdown(&protobuf_ShutdownFile_protobuf_2fannoy_2eproto);
 }
@@ -481,180 +457,6 @@ void data_info::Swap(data_info* other) {
   ::google::protobuf::Metadata metadata;
   metadata.descriptor = data_info_descriptor_;
   metadata.reflection = data_info_reflection_;
-  return metadata;
-}
-
-
-// ===================================================================
-
-#ifndef _MSC_VER
-#endif  // !_MSC_VER
-
-plane_split::plane_split()
-  : ::google::protobuf::Message() {
-  SharedCtor();
-  // @@protoc_insertion_point(constructor:plane_split)
-}
-
-void plane_split::InitAsDefaultInstance() {
-}
-
-plane_split::plane_split(const plane_split& from)
-  : ::google::protobuf::Message() {
-  SharedCtor();
-  MergeFrom(from);
-  // @@protoc_insertion_point(copy_constructor:plane_split)
-}
-
-void plane_split::SharedCtor() {
-  _cached_size_ = 0;
-  ::memset(_has_bits_, 0, sizeof(_has_bits_));
-}
-
-plane_split::~plane_split() {
-  // @@protoc_insertion_point(destructor:plane_split)
-  SharedDtor();
-}
-
-void plane_split::SharedDtor() {
-  if (this != default_instance_) {
-  }
-}
-
-void plane_split::SetCachedSize(int size) const {
-  GOOGLE_SAFE_CONCURRENT_WRITES_BEGIN();
-  _cached_size_ = size;
-  GOOGLE_SAFE_CONCURRENT_WRITES_END();
-}
-const ::google::protobuf::Descriptor* plane_split::descriptor() {
-  protobuf_AssignDescriptorsOnce();
-  return plane_split_descriptor_;
-}
-
-const plane_split& plane_split::default_instance() {
-  if (default_instance_ == NULL) protobuf_AddDesc_protobuf_2fannoy_2eproto();
-  return *default_instance_;
-}
-
-plane_split* plane_split::default_instance_ = NULL;
-
-plane_split* plane_split::New() const {
-  return new plane_split;
-}
-
-void plane_split::Clear() {
-  ::memset(_has_bits_, 0, sizeof(_has_bits_));
-  mutable_unknown_fields()->Clear();
-}
-
-bool plane_split::MergePartialFromCodedStream(
-    ::google::protobuf::io::CodedInputStream* input) {
-#define DO_(EXPRESSION) if (!(EXPRESSION)) goto failure
-  ::google::protobuf::uint32 tag;
-  // @@protoc_insertion_point(parse_start:plane_split)
-  for (;;) {
-    ::std::pair< ::google::protobuf::uint32, bool> p = input->ReadTagWithCutoff(127);
-    tag = p.first;
-    if (!p.second) goto handle_unusual;
-  handle_unusual:
-    if (tag == 0 ||
-        ::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
-        ::google::protobuf::internal::WireFormatLite::WIRETYPE_END_GROUP) {
-      goto success;
-    }
-    DO_(::google::protobuf::internal::WireFormat::SkipField(
-          input, tag, mutable_unknown_fields()));
-  }
-success:
-  // @@protoc_insertion_point(parse_success:plane_split)
-  return true;
-failure:
-  // @@protoc_insertion_point(parse_failure:plane_split)
-  return false;
-#undef DO_
-}
-
-void plane_split::SerializeWithCachedSizes(
-    ::google::protobuf::io::CodedOutputStream* output) const {
-  // @@protoc_insertion_point(serialize_start:plane_split)
-  if (!unknown_fields().empty()) {
-    ::google::protobuf::internal::WireFormat::SerializeUnknownFields(
-        unknown_fields(), output);
-  }
-  // @@protoc_insertion_point(serialize_end:plane_split)
-}
-
-::google::protobuf::uint8* plane_split::SerializeWithCachedSizesToArray(
-    ::google::protobuf::uint8* target) const {
-  // @@protoc_insertion_point(serialize_to_array_start:plane_split)
-  if (!unknown_fields().empty()) {
-    target = ::google::protobuf::internal::WireFormat::SerializeUnknownFieldsToArray(
-        unknown_fields(), target);
-  }
-  // @@protoc_insertion_point(serialize_to_array_end:plane_split)
-  return target;
-}
-
-int plane_split::ByteSize() const {
-  int total_size = 0;
-
-  if (!unknown_fields().empty()) {
-    total_size +=
-      ::google::protobuf::internal::WireFormat::ComputeUnknownFieldsSize(
-        unknown_fields());
-  }
-  GOOGLE_SAFE_CONCURRENT_WRITES_BEGIN();
-  _cached_size_ = total_size;
-  GOOGLE_SAFE_CONCURRENT_WRITES_END();
-  return total_size;
-}
-
-void plane_split::MergeFrom(const ::google::protobuf::Message& from) {
-  GOOGLE_CHECK_NE(&from, this);
-  const plane_split* source =
-    ::google::protobuf::internal::dynamic_cast_if_available<const plane_split*>(
-      &from);
-  if (source == NULL) {
-    ::google::protobuf::internal::ReflectionOps::Merge(from, this);
-  } else {
-    MergeFrom(*source);
-  }
-}
-
-void plane_split::MergeFrom(const plane_split& from) {
-  GOOGLE_CHECK_NE(&from, this);
-  mutable_unknown_fields()->MergeFrom(from.unknown_fields());
-}
-
-void plane_split::CopyFrom(const ::google::protobuf::Message& from) {
-  if (&from == this) return;
-  Clear();
-  MergeFrom(from);
-}
-
-void plane_split::CopyFrom(const plane_split& from) {
-  if (&from == this) return;
-  Clear();
-  MergeFrom(from);
-}
-
-bool plane_split::IsInitialized() const {
-
-  return true;
-}
-
-void plane_split::Swap(plane_split* other) {
-  if (other != this) {
-    _unknown_fields_.Swap(&other->_unknown_fields_);
-    std::swap(_cached_size_, other->_cached_size_);
-  }
-}
-
-::google::protobuf::Metadata plane_split::GetMetadata() const {
-  protobuf_AssignDescriptorsOnce();
-  ::google::protobuf::Metadata metadata;
-  metadata.descriptor = plane_split_descriptor_;
-  metadata.reflection = plane_split_reflection_;
   return metadata;
 }
 

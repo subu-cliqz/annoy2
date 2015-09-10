@@ -32,7 +32,6 @@ void protobuf_AssignDesc_protobuf_2fannoy_2eproto();
 void protobuf_ShutdownFile_protobuf_2fannoy_2eproto();
 
 class data_info;
-class plane_split;
 class tree_node;
 
 // ===================================================================
@@ -137,75 +136,6 @@ class data_info : public ::google::protobuf::Message {
 
   void InitAsDefaultInstance();
   static data_info* default_instance_;
-};
-// -------------------------------------------------------------------
-
-class plane_split : public ::google::protobuf::Message {
- public:
-  plane_split();
-  virtual ~plane_split();
-
-  plane_split(const plane_split& from);
-
-  inline plane_split& operator=(const plane_split& from) {
-    CopyFrom(from);
-    return *this;
-  }
-
-  inline const ::google::protobuf::UnknownFieldSet& unknown_fields() const {
-    return _unknown_fields_;
-  }
-
-  inline ::google::protobuf::UnknownFieldSet* mutable_unknown_fields() {
-    return &_unknown_fields_;
-  }
-
-  static const ::google::protobuf::Descriptor* descriptor();
-  static const plane_split& default_instance();
-
-  void Swap(plane_split* other);
-
-  // implements Message ----------------------------------------------
-
-  plane_split* New() const;
-  void CopyFrom(const ::google::protobuf::Message& from);
-  void MergeFrom(const ::google::protobuf::Message& from);
-  void CopyFrom(const plane_split& from);
-  void MergeFrom(const plane_split& from);
-  void Clear();
-  bool IsInitialized() const;
-
-  int ByteSize() const;
-  bool MergePartialFromCodedStream(
-      ::google::protobuf::io::CodedInputStream* input);
-  void SerializeWithCachedSizes(
-      ::google::protobuf::io::CodedOutputStream* output) const;
-  ::google::protobuf::uint8* SerializeWithCachedSizesToArray(::google::protobuf::uint8* output) const;
-  int GetCachedSize() const { return _cached_size_; }
-  private:
-  void SharedCtor();
-  void SharedDtor();
-  void SetCachedSize(int size) const;
-  public:
-  ::google::protobuf::Metadata GetMetadata() const;
-
-  // nested types ----------------------------------------------------
-
-  // accessors -------------------------------------------------------
-
-  // @@protoc_insertion_point(class_scope:plane_split)
- private:
-
-  ::google::protobuf::UnknownFieldSet _unknown_fields_;
-
-  ::google::protobuf::uint32 _has_bits_[1];
-  mutable int _cached_size_;
-  friend void  protobuf_AddDesc_protobuf_2fannoy_2eproto();
-  friend void protobuf_AssignDesc_protobuf_2fannoy_2eproto();
-  friend void protobuf_ShutdownFile_protobuf_2fannoy_2eproto();
-
-  void InitAsDefaultInstance();
-  static plane_split* default_instance_;
 };
 // -------------------------------------------------------------------
 
@@ -437,10 +367,6 @@ inline void data_info::set_category(::google::protobuf::uint32 value) {
   category_ = value;
   // @@protoc_insertion_point(field_set:data_info.category)
 }
-
-// -------------------------------------------------------------------
-
-// plane_split
 
 // -------------------------------------------------------------------
 

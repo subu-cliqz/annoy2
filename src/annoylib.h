@@ -258,9 +258,9 @@ struct Euclidean {
 };
 
 template<typename S, typename T>
-class AnnoyIndexInterface {
+class AnnoyIndexInterface2 {
  public:
-  virtual ~AnnoyIndexInterface() {};
+  virtual ~AnnoyIndexInterface2() {};
   virtual void add_item(S item, const T* w) = 0;
   virtual void build(int q) = 0;
   virtual bool save(const char* filename) = 0;
@@ -276,7 +276,7 @@ class AnnoyIndexInterface {
 };
 
 template<typename S, typename T, template<typename, typename, typename> class Distance, class Random>
-  class AnnoyIndex : public AnnoyIndexInterface<S, T> {
+  class AnnoyIndexOld : public AnnoyIndexInterface2<S, T> {
   /*
    * We use random projection to build a forest of binary trees of all items.
    * Basically just split the hyperspace into two sides by a hyperplane,
@@ -301,7 +301,7 @@ protected:
   bool _verbose;
 public:
 
-  AnnoyIndex(int f) : _random() {
+  AnnoyIndexOld(int f) : _random() {
     _f = f;
     _s = offsetof(Node, v) + f * sizeof(T); // Size of each node
     _n_items = 0;
@@ -313,7 +313,7 @@ public:
 
     _K = (_s - offsetof(Node, children)) / sizeof(S); // Max number of descendants to fit into node
   }
-  ~AnnoyIndex() {
+  ~AnnoyIndexOld() {
     if (_loaded) {
       unload();
     } else if(_nodes) {

@@ -41,9 +41,11 @@ setup(name='annoy',
       packages=['annoy'],
       ext_modules=[
         Extension(
-            'annoy.annoylib', ['src/annoymodule.cc'],
-            depends=['src/annoylib.h'],
+            'annoy.annoylib', ['src/annoymodule.cc',  'src/protobuf/annoy.pb.cc'],
+            depends=['src/annoylib.h', 'src/lmdbforest.h', 'src/protobuf/annoy.pb.h'],
+            include_dirs=['src', '/usr/loca/include', '/opt/local/include'],
             extra_compile_args=['-O3', '-march=native', '-ffast-math'],
+            libraries = ["lmdb", "protobuf"]
         )
       ],
       long_description=long_description,
