@@ -35,6 +35,15 @@
 #define CHECK(test, msg) ((test) ? (void)0 : ((void)fprintf(stderr, \
 "%s:%d: %s: %s\n", __FILE__, __LINE__, msg, mdb_strerror(rc)), abort()))
 
+
+#define DBN_ROOT "root"
+#define DBN_RAW "raw"
+#define DBN_TREE "tree"
+
+
+
+
+
 using namespace std;
 
 
@@ -59,9 +68,7 @@ class LMDBForest  {
   protected:
   typedef Distance<S, T, Random> D;
     bool _verbose;
-    static const char* DBN_RAW;
-    static const char* DBN_ROOT;
-    static const char* DBN_TREE;
+ 
     
     int rc; //for macro processisng
     
@@ -170,7 +177,7 @@ class LMDBForest  {
         
         vector<int> roots;
         
-        int count = 0;
+ 
         MDB_val key, data;
         MDB_txn *txn;
         MDB_cursor *cursor;
@@ -207,8 +214,6 @@ class LMDBForest  {
     
     bool set_roots() {
       
-      
-      int count = 0;
       MDB_val key, data;
       MDB_txn *txn;
       MDB_dbi dbi;
@@ -244,7 +249,7 @@ class LMDBForest  {
           tn.set_leaf(true);
           string str;
           tn.SerializeToString(&str);
-          data.mv_data = str.c_str()
+          data.mv_data = (uint8_t*)str.c_str();
           data.mv_size = str.length();
           int retval = mdb_put(_txn, dbi, &key, &data, 0);
           if (retval != MDB_SUCCESS) {
@@ -274,7 +279,7 @@ class LMDBForest  {
         
         //get the largest index
         int max_index = _get_max_tree_index();
-        return _update(tree_node(max_index + 1, tn);
+        return _update_tree_node(max_index + 1, tn);
     }
     
     bool _update_tree_node(int index, tree_node & tn) {
@@ -395,9 +400,6 @@ class LMDBForest  {
     
 };
 
-const char* BitIndexer::DBN_ROOT = "root";
-const char* BitIndexer::DBN_TREE = "tree";
-const char* BitIndexer::DBN_RAW = "raw";
 
 
 #endif
