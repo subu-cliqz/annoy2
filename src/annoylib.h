@@ -83,6 +83,15 @@ inline T get_norm(T* v, int f) {
   return sqrt(sq_norm);
 }
 
+
+inline float get_norm1(data_info& d, int f) {
+  float sq_norm = 0;
+  for (int z = 0; z < f; z++)
+    sq_norm += d.data(z) * d.data(z);
+  return sqrt(sq_norm);
+}
+
+
 template<typename T>
 inline void normalize(T* v, int f) {
   T norm = get_norm(v, f);
@@ -112,6 +121,22 @@ struct Angular {
     S children[2]; // Will possibly store more than 2
     T v[1]; // We let this one overflow intentionally. Need to allocate at least 1 to make GCC happy
   };
+  static inline T distance(data_info& x , data_info& y, int f) {
+    // want to calculate (a/|a| - b/|b|)^2
+    // = a^2 / a^2 + b^2 / b^2 - 2ab/|a||b|
+    // = 2 - 2cos
+    T pp = 0, qq = 0, pq = 0;
+    for (int z = 0; z < f; z++) {
+      pp += (x.data(z)) * (x.data(z));
+      qq += (y.data(z)) * (y.data(z));
+      pq += (y.data(z)) * (x.data(z));
+    }
+    printf("%f, %f, %f\n", pp, qq, pq);
+    T ppqq = pp * qq;
+    if (ppqq > 0) return 2.0 - 2.0 * pq / sqrt(ppqq);
+    else return 2.0; // cos is 0
+  }
+
   static inline T distance(const T* x, const T* y, int f) {
     // want to calculate (a/|a| - b/|b|)^2
     // = a^2 / a^2 + b^2 / b^2 - 2ab/|a||b|
@@ -154,6 +179,41 @@ struct Angular {
       n->v[z] = iv[z] / i_norm - jv[z] / j_norm;
     normalize(n->v, f);
   }
+  
+  
+  static inline void split(const tree_node& tn, const vector<data_info>& nodes,
+                           tree_node& new_node,  tree_node& left_node, tree_node& right_node,
+                           Random& random, int f) {
+    
+    // Sample two random points from the set of nodes
+    // Calculate the hyperplane equidistant from them
+    size_t count = nodes.size();
+    size_t i = random.index(count);
+    size_t j = random.index(count-1);
+    j += (j >= i); // ensure that i != j
+    
+    data_info iv = nodes[i];
+    data_info jv = nodes[j];
+    
+    T i_norm = get_norm1(iv, f);
+    T j_norm = get_norm1(jv, f);
+    
+    
+    
+    T t = 0.0;
+    
+    for (int z = 0; z < f; z++) {
+      T d = iv.data(z) / i_norm - jv.data(z) / j_norm;
+      new_node.add_v(d);
+      t += - d * (iv.data(z) + jv.data(z)) / 2;
+    }
+
+
+    
+    
+  }
+  
+  
   static inline T normalized_distance(T distance) {
     // Used when requesting distances from Python layer
     return sqrt(distance);
@@ -168,6 +228,14 @@ struct Euclidean {
     S children[2];
     T v[1];
   };
+  
+  static inline T distance(data_info& x, data_info&  y, int f) {
+    T d = 0.0;
+    for (int i = 0; i < f; i++)
+      d += ((x.data(i)) - (y.data(i))) * ((x.data(i)) - (y.data(i)));
+    return d;
+  }
+  
   static inline T distance(const T* x, const T* y, int f) {
     T d = 0.0;
     for (int i = 0; i < f; i++, x++, y++)
@@ -609,7 +677,7 @@ protected:
     std::partial_sort(&nns_dist[0], &nns_dist[p], &nns_dist[m]);
     for (size_t i = 0; i < p; i++) {
       if (distances)
-	distances->push_back(D::normalized_distance(nns_dist[i].first));
+        distances->push_back(D::normalized_distance(nns_dist[i].first));
       result->push_back(nns_dist[i].second);
     }
   }

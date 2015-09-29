@@ -35,7 +35,6 @@ class TestCase(unittest.TestCase):
 
 class AngularIndexTest(TestCase):
     def test_get_nns_by_vector(self):
-        print "test_get_nns_by_vector "
         f = 3
         i = AnnoyIndex(f)
         i.add_item(0, [0, 0, 1])
@@ -48,7 +47,6 @@ class AngularIndexTest(TestCase):
         self.assertEqual(i.get_nns_by_vector([2, 0, 1], 3), [2, 0, 1])
 
     def test_get_nns_by_item(self):
-        print "test_get_nns_by_item "
         f = 3
         i = AnnoyIndex(f)
         i.add_item(0, [2, 1, 0])
@@ -61,19 +59,12 @@ class AngularIndexTest(TestCase):
         self.assertTrue(i.get_nns_by_item(2, 3) in [[2, 0, 1], [2, 1, 0]]) # could be either
 
     def test_dist(self):
-        print "test_dist "
         f = 2
-        print "creating object"
-        
-        i = AnnoyIndex(f, 2, 64, "test_db", 100, 3048576000)
-        
-        print "creating object"
+        i = AnnoyIndex(f)
         i.add_item(0, [0, 1])
         i.add_item(1, [1, 1])
 
-        print "creating object"
         self.assertAlmostEqual(i.get_distance(0, 1), 2 * (1.0 - 2 ** -0.5))
-        print "don"
 
     def test_dist_2(self):
         f = 2
@@ -322,5 +313,3 @@ class TypesTest(TestCase):
         self.assertRaises(IndexError, i.add_item, 2, [])
 
         i.build(n_trees)
-if __name__ == '__main__':
-    unittest.main()

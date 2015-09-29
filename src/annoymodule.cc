@@ -65,10 +65,10 @@ py_an_init(py_annoy *self, PyObject *args, PyObject *kwds) {
     return -1;
   switch(metric[0]) {
   case 'a':
-    self->ptr = new AnnoyIndex<int32_t, float, Angular, Kiss64Random>(self->f, 32,  64);
+    self->ptr = new AnnoyIndex<int32_t, float, Angular, Kiss64Random>(self->f, 2,  64, "test_db", 1000, 3048576000);
     break;
   case 'e':
-    self->ptr = new AnnoyIndex<int32_t, float, Euclidean, Kiss64Random>(self->f, 32,  64);
+    self->ptr = new AnnoyIndex<int32_t, float, Euclidean, Kiss64Random>(self->f, 2,  64, "test_db", 1000, 3048576000);
     break;
   }
   return 0;
