@@ -15,12 +15,12 @@
 from .annoylib import *
 
 class AnnoyIndex(Annoy):
-    def __init__(self, f, metric='angular'):
+    def __init__(self, f, K,file_dir, r,  max_reader, max_size,  metric='angular'):
         """
         :param metric: 'angular' or 'euclidean'
         """
         self.f = f
-        super(AnnoyIndex, self).__init__(f, metric)
+        super(AnnoyIndex, self).__init__(f, K, file_dir, r, max_reader, max_size, metric)
 
     def check_list(self, vector):
         if type(vector) != list:

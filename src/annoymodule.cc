@@ -39,6 +39,10 @@ template class AnnoyIndexInterface<int32_t, float>;
 typedef struct {
   PyObject_HEAD
   int f;
+  int K;
+  int tree_count;
+  int max_reader;
+  long max_size;
   AnnoyIndexInterface<int32_t, float>* ptr;
 } py_annoy;
 
@@ -60,15 +64,20 @@ py_an_new(PyTypeObject *type, PyObject *args, PyObject *kwds) {
 static int 
 py_an_init(py_annoy *self, PyObject *args, PyObject *kwds) {
   const char *metric;
+  const char *file_dir;
 
-  if (!PyArg_ParseTuple(args, "is", &self->f, &metric))
+
+  if (!PyArg_ParseTuple(args, "iisiils", &self->f,  &self->K, 
+    &file_dir, &self->tree_count, &self->max_reader, &self->max_size, &metric))
     return -1;
   switch(metric[0]) {
   case 'a':
-    self->ptr = new AnnoyIndex<int32_t, float, Angular, Kiss64Random>(self->f, 2,  64, "test_db", 1000, 3048576000);
+    self->ptr = new AnnoyIndex<int32_t, float, Angular, Kiss64Random>(self->f, self->K,  
+      self->tree_count, file_dir, self->max_reader, self->max_size);
     break;
   case 'e':
-    self->ptr = new AnnoyIndex<int32_t, float, Euclidean, Kiss64Random>(self->f, 2,  64, "test_db", 1000, 3048576000);
+    self->ptr = new AnnoyIndex<int32_t, float, Euclidean, Kiss64Random>(self->f,self->K,  
+      self->tree_count, file_dir, self->max_reader, self->max_size);
     break;
   }
   return 0;

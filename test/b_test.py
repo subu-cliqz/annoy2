@@ -40,7 +40,7 @@ class AngularIndexTest(TestCase):
         f = 2
         print "creating object"
         
-        i = AnnoyIndex(f)
+        i = AnnoyIndex(f,  2, "test_db", 64,  1000, 3048576000)
         
         print "creating object"
         i.add_item(0, [0, 1])
@@ -48,7 +48,7 @@ class AngularIndexTest(TestCase):
 
         print "creating object"
         self.assertAlmostEqual(i.get_distance(0, 1), 2 * (1.0 - 2 ** -0.5))
-        print "don"
+        print "done"
 
 
 if __name__ == '__main__':
