@@ -137,8 +137,13 @@ class AnnoyIndex : public AnnoyIndexInterface<S, T> {
       E(mdb_env_create(&_env));
       E(mdb_env_set_maxreaders(_env, maxreaders));
       E(mdb_env_set_maxdbs(_env, 100));
-      printf("creating db at %s\n", database_directory);
+      if (_verbose)  { printf("opening db at %s ..", database_directory); fflush(stdout);}
       E(mdb_env_open(_env, database_directory, MDB_RDONLY, 0664));
+      if (_verbose)  { printf("done.\n"); fflush(stdout);}
+      for (int i = 0; i < _tree_count; i ++)
+      {
+        _roots.push_back(i);  
+      }
       return true;
     }
     
@@ -150,6 +155,10 @@ class AnnoyIndex : public AnnoyIndexInterface<S, T> {
       E(mdb_env_set_mapsize(_env, maxsize));
       E(mdb_env_set_maxdbs(_env, 100));
       E(mdb_env_open(_env, database_directory, MDB_WRITEMAP, 0664));
+      for (int i = 0; i < _tree_count; i ++)
+      {
+        _roots.push_back(i);  
+      }
       return true;
     }
 
@@ -243,7 +252,14 @@ class AnnoyIndex : public AnnoyIndexInterface<S, T> {
     void get_nns_by_vector(const T* w, size_t n, size_t search_k, 
       vector<S>* result, vector<T>* distances) {
       printf("c++: get_nns_by_vector %d, %d\n", n, search_k);
+
+
+      E(mdb_txn_begin(_env, NULL, MDB_RDONLY, &_txn));
+      E(mdb_dbi_open(_txn, DBN_RAW, 0, &_dbi_raw));
+      E(mdb_dbi_open(_txn, DBN_TREE, 0, &_dbi_tree));
+
        _get_all_nns(w, n, search_k, result, distances);
+      mdb_txn_abort(_txn);
       
       return ;
     }
@@ -255,7 +271,7 @@ class AnnoyIndex : public AnnoyIndexInterface<S, T> {
       if (search_k == (size_t) (-1)) {
         search_k = n * _tree_count; // slightly arbitrary default value
       }
-      printf("c++: get_nns_by_vector %d, %d\n", n, search_k);
+      //printf("c++: get_nns_by_vector %d, %d\n", n, search_k);
     
 
       //put all root nodes in priority queue
@@ -264,11 +280,15 @@ class AnnoyIndex : public AnnoyIndexInterface<S, T> {
       }
     
       vector<S> nns;
-      // 
+     
+
+
 
       while (nns.size() < search_k && !q.empty()) {
 
-        printf("c++: get_nns_by_vector nns size %d, queue size : %d\n", nns.size(), q.size());
+        if (_verbose) {
+          //printf("c++: get_nns_by_vector nns size %d, queue size : %d\n", nns.size(), q.size());
+        }
     
 
         const pair<T, S>& top = q.top();
@@ -312,10 +332,15 @@ class AnnoyIndex : public AnnoyIndexInterface<S, T> {
       size_t p = n < m ? n : m; // Return this many items
       std::partial_sort(&nns_dist[0], &nns_dist[p], &nns_dist[m]);
       for (size_t i = 0; i < p; i++) {
-        if (distances)
+        if (distances) {
           distances->push_back(D::normalized_distance(nns_dist[i].first));
+        }
         result->push_back(nns_dist[i].second);
+        if (_verbose) {
+          printf("distance %d : -> %f\n", i,  nns_dist[i].first);
+        }
       }
+
     }
      
   
@@ -450,6 +475,7 @@ class AnnoyIndex : public AnnoyIndexInterface<S, T> {
         int retval = mdb_put(txn, dbi_tree, &key, &data, 0);
         if (retval != MDB_SUCCESS) {
             printf("failed add root for tree %d, due to %s \n" , i, mdb_strerror(retval));
+            fflush(stdout);
             success = false;
             break;
         }

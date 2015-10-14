@@ -18,6 +18,7 @@ class TreeTest(TestCase):
         os.system("mkdir test_db")
         f = 3
         i = AnnoyIndex(f, 3, "test_db", 10, 1000, 3048576000, 0)
+        i.verbose(True)
         i.create()
 
 
@@ -29,6 +30,14 @@ class TreeTest(TestCase):
         self.assertEqual(i.get_nns_by_vector([3, 2, 1], 3), [2, 1, 0])
         self.assertEqual(i.get_nns_by_vector([1, 2, 3], 3), [0, 1, 2])
         self.assertEqual(i.get_nns_by_vector([2, 0, 1], 3), [2, 0, 1])
+
+        print "create i2"
+        i2 = AnnoyIndex(f, 3, "test_db", 10, 1000, 3048576000, 1)
+        i2.verbose(True)
+        self.assertEqual(i2.get_nns_by_vector([3, 2, 1], 3), [2, 1, 0])
+        self.assertEqual(i2.get_nns_by_vector([1, 2, 3], 3), [0, 1, 2])
+        self.assertEqual(i2.get_nns_by_vector([2, 0, 1], 3), [2, 0, 1])
+
 
 
 if __name__ == '__main__':
