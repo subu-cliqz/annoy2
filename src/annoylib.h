@@ -121,6 +121,23 @@ struct Angular {
     S children[2]; // Will possibly store more than 2
     T v[1]; // We let this one overflow intentionally. Need to allocate at least 1 to make GCC happy
   };
+  
+  static inline T distance(const T* x , data_info& y, int f) {
+    // want to calculate (a/|a| - b/|b|)^2
+    // = a^2 / a^2 + b^2 / b^2 - 2ab/|a||b|
+    // = 2 - 2cos
+    T pp = 0, qq = 0, pq = 0;
+    for (int z = 0; z < f; z++, x++) {
+      pp += (*x) * (*x);
+      qq += (y.data(z)) * (y.data(z));
+      pq += (y.data(z)) * (*x);
+    }
+    printf("%f, %f, %f\n", pp, qq, pq);
+    T ppqq = pp * qq;
+    if (ppqq > 0) return 2.0 - 2.0 * pq / sqrt(ppqq);
+    else return 2.0; // cos is 0
+  }
+
   static inline T distance(data_info& x , data_info& y, int f) {
     // want to calculate (a/|a| - b/|b|)^2
     // = a^2 / a^2 + b^2 / b^2 - 2ab/|a||b|
@@ -151,6 +168,16 @@ struct Angular {
     if (ppqq > 0) return 2.0 - 2.0 * pq / sqrt(ppqq);
     else return 2.0; // cos is 0
   }
+
+  static inline T margin(const tree_node& tn, const T* y, int f) {
+    T dot = 0;
+    for (int z = 0; z < f; z++) {
+      dot += tn.v(z) * y[z];
+    }
+    dot += tn.t();
+    return dot;
+  }
+
   static inline T margin(const Node* n, const T* y, int f) {
     T dot = 0;
     for (int z = 0; z < f; z++)
@@ -235,13 +262,34 @@ struct Euclidean {
       d += ((x.data(i)) - (y.data(i))) * ((x.data(i)) - (y.data(i)));
     return d;
   }
-  
+  static inline T distance(const T* x, data_info& y, int f) {
+    T d = 0.0;
+    for (int i = 0; i < f; i++, x++)
+      d += ((*x) - (y.data(i))) * ((*x) - (y.data(i)));
+    return d;
+  }
+ 
+  static inline T distance(data_info& x, const T*  y, int f) {
+    T d = 0.0;
+    for (int i = 0; i < f; i++, y++)
+      d += ((x.data(i)) - (*y)) * ((x.data(i)) - (*y));
+    return d;
+  }
+
   static inline T distance(const T* x, const T* y, int f) {
     T d = 0.0;
     for (int i = 0; i < f; i++, x++, y++)
       d += ((*x) - (*y)) * ((*x) - (*y));
     return d;
   }
+
+  static inline T margin(tree_node& tn, const T* y, int f) {
+    T dot = tn.t();
+    for (int z = 0; z < f; z++)
+      dot += tn.v(z) * y[z];
+    return dot;
+  }
+
   static inline T margin(const Node* n, const T* y, int f) {
     T dot = n->a;
     for (int z = 0; z < f; z++)
@@ -387,6 +435,9 @@ public:
     } else if(_nodes) {
       free(_nodes);
     }
+  }
+  bool create() {
+    return true;
   }
 
   void add_item(S item, const T* w) {

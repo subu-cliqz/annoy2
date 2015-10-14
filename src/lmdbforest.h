@@ -42,9 +42,6 @@
 #define DBN_TREE "tree"
 
 
-
-
-
 using namespace std;
 
 
@@ -79,6 +76,10 @@ public:
   virtual S get_n_items() = 0;
   virtual void verbose(bool v) = 0;
   virtual void get_item(S item, vector<T>* v) = 0;
+
+
+  virtual bool create()=0;
+     
 };
 
 template<typename S, typename T, template<typename, typename, typename> class Distance, class Random>
@@ -88,8 +89,6 @@ class AnnoyIndex : public AnnoyIndexInterface<S, T> {
     Random _random;
     typedef Distance<S, T, Random> D;
     bool _verbose;
- 
-    
     int rc; //for macro processisng
     
   protected:
@@ -102,34 +101,48 @@ class AnnoyIndex : public AnnoyIndexInterface<S, T> {
     int _tree_count; //number of trees;
     int _K ; // maximum size of data in each leaf node
 
+    vector<int> _roots;
+
+    bool _read_only;
+
+
+
  public:
 
-    ~AnnoyIndex()    {
-    }
-    AnnoyIndex(int f, int K, int r, const char* dir, int maxreaders, uint64_t maxsize) : _random() {
+
+    AnnoyIndex(int f, int K, int r, const char* dir, int maxreaders, uint64_t maxsize, int read_only) : _random() {
       _f = f;
       _tree_count = r;
       _K = K;
       _verbose = false;
 
+      //for lmdb usage
       _env = NULL;
       _txn = NULL;
+
+      if (read_only == 1) {
+        open_as_read(dir, maxreaders);
+      } else {
+        open_as_write(dir, maxreaders, maxsize);
+      }
+      _read_only = (read_only == 1);
       
-      init_write(dir, maxreaders, maxsize);
     }
     
-    /*
-    bool init_read(const char* database_directory, int maxreaders) {
+    ~AnnoyIndex(){
+    }
+
+    bool open_as_read(const char* database_directory, int maxreaders) {
       close_db();
       E(mdb_env_create(&_env));
       E(mdb_env_set_maxreaders(_env, maxreaders));
       E(mdb_env_set_maxdbs(_env, 100));
+      printf("creating db at %s\n", database_directory);
       E(mdb_env_open(_env, database_directory, MDB_RDONLY, 0664));
       return true;
     }
-    */
     
-    bool init_write(const char* database_directory, int maxreaders, uint64_t maxsize) {
+    bool open_as_write(const char* database_directory, int maxreaders, uint64_t maxsize) {
       printf("init write dir: %s, maxreader %d, maxsize %lld\n", database_directory, maxreaders, maxsize);
       close_db();
       E(mdb_env_create(&_env));
@@ -137,9 +150,12 @@ class AnnoyIndex : public AnnoyIndexInterface<S, T> {
       E(mdb_env_set_mapsize(_env, maxsize));
       E(mdb_env_set_maxdbs(_env, 100));
       E(mdb_env_open(_env, database_directory, MDB_WRITEMAP, 0664));
-      //_set_roots();
-     
       return true;
+    }
+
+    bool create()
+    {
+      return init_roots();
     }
     
     bool close_db() {
@@ -215,18 +231,104 @@ class AnnoyIndex : public AnnoyIndexInterface<S, T> {
 
     }
 
+
     void get_nns_by_item(S item, size_t n, size_t search_k, vector<S>* result, vector<T>* distances) {
+      data_info d;
+      _get_raw_data(item, d);
+      
+
       return;
     }
-    void get_nns_by_vector(const T* w, size_t n, size_t search_k, vector<S>* result, vector<T>* distances) {
+
+    void get_nns_by_vector(const T* w, size_t n, size_t search_k, 
+      vector<S>* result, vector<T>* distances) {
+      printf("c++: get_nns_by_vector %d, %d\n", n, search_k);
+       _get_all_nns(w, n, search_k, result, distances);
+      
       return ;
     }
+
+    void _get_all_nns(const T* v, size_t n, size_t search_k, vector<S>* result, vector<T>* distances) {
+      
+      std::priority_queue<pair<T, S> > q;
+
+      if (search_k == (size_t) (-1)) {
+        search_k = n * _tree_count; // slightly arbitrary default value
+      }
+      printf("c++: get_nns_by_vector %d, %d\n", n, search_k);
+    
+
+      //put all root nodes in priority queue
+      for (size_t i = 0; i < _tree_count; i++) {
+        q.push(make_pair(numeric_limits<T>::infinity(), _roots[i]));
+      }
+    
+      vector<S> nns;
+      // 
+
+      while (nns.size() < search_k && !q.empty()) {
+
+        printf("c++: get_nns_by_vector nns size %d, queue size : %d\n", nns.size(), q.size());
+    
+
+        const pair<T, S>& top = q.top();
+        T d = top.first;
+        S i = top.second;
+        tree_node tn;
+        bool result = _get_node_by_index(i, tn);
+        q.pop();
+        if (tn.leaf()) {
+
+          for (int i = 0; i < tn.items_size(); i ++) {
+              nns.push_back(tn.items(i));
+          }
+        } else {
+
+          //T margin = D::margin(nd, v, _f);
+          T margin = D::margin(tn, v, _f);
+          q.push(make_pair(std::min(d, +margin), tn.right()));
+          q.push(make_pair(std::min(d, -margin), tn.left()));
+        }
+      }
+
+      // Get distances for all items
+      // To avoid calculating distance multiple times for any items, sort by id
+      sort(nns.begin(), nns.end());
+      vector<pair<T, S> > nns_dist;
+      S last = -1;
+      for (size_t i = 0; i < nns.size(); i++) {
+        S j = nns[i];
+        if (j == last)
+          continue;
+        last = j;
+
+        data_info di;
+        bool r = _get_raw_data(j, di);
+
+        nns_dist.push_back(make_pair(D::distance(v, di,  _f), j));
+      }
+
+      size_t m = nns_dist.size();
+      size_t p = n < m ? n : m; // Return this many items
+      std::partial_sort(&nns_dist[0], &nns_dist[p], &nns_dist[m]);
+      for (size_t i = 0; i < p; i++) {
+        if (distances)
+          distances->push_back(D::normalized_distance(nns_dist[i].first));
+        result->push_back(nns_dist[i].second);
+      }
+    }
+     
+  
+
+
     S get_n_items() {
       return 0;
     }
+    
     void verbose(bool v){
       set_verbose(v);
     }
+    
     void get_item(S item, vector<T>* v)  {
       return;
     };
@@ -236,16 +338,16 @@ class AnnoyIndex : public AnnoyIndexInterface<S, T> {
 
       E(mdb_txn_begin(_env, NULL, 0, &_txn));
       E(mdb_dbi_open(_txn, DBN_RAW, MDB_CREATE, &_dbi_raw));
-   
+      E(mdb_dbi_open(_txn, DBN_TREE, MDB_CREATE, &_dbi_tree));
+      _add_raw_data(data_id, d);
+      if (_verbose) {
         printf ("adding raw data \n");
         fflush(stdout);
-        _add_raw_data(data_id, d);
-        printf ("raw data added\n");
-        fflush(stdout);
+      }
         
-        for (int i = 0; i < _tree_count; i ++ ) {
-            _add_item_to_tree(i, data_id);
-        }
+      for (int i = 0; i < _tree_count; i ++ ) {
+        _add_item_to_tree(i, data_id);
+      }
       mdb_txn_commit(_txn);
       return;
     }
@@ -254,7 +356,10 @@ class AnnoyIndex : public AnnoyIndexInterface<S, T> {
       //check node type
       tree_node tn;
       bool result = _get_node_by_index(node_index, tn);
-      if (!result) return;
+      if (!result)  {
+        return;
+      }
+
       if (tn.leaf() == true) {
           
         //check if it needs to split
@@ -283,11 +388,8 @@ class AnnoyIndex : public AnnoyIndexInterface<S, T> {
       }
         
     }
-  
-    vector<int> get_roots() {
-        
-        vector<int> roots;
-        
+    /*
+    void get_roots() {
  
         MDB_val key, data;
         MDB_txn *txn;
@@ -299,13 +401,13 @@ class AnnoyIndex : public AnnoyIndexInterface<S, T> {
         E(mdb_cursor_open(txn, dbi, &cursor));
         rc = mdb_cursor_get(cursor, &key, &data, MDB_FIRST);
         
-        roots.push_back(atoi((char*)data.mv_data));
+        _roots.push_back(atoi((char*)data.mv_data));
         
-        //printf("%s\n", mdb_strerror(rc));
+        printf("%s\n", mdb_strerror(rc));
         if (rc == 0) {
             while ((rc = mdb_cursor_get(cursor, &key, &data, MDB_NEXT)) == 0) {
-                roots.push_back(atoi((char*)data.mv_data));
-                
+                printf("get root %d with node id: %d \n", _roots.size(), atoi((char*)data.mv_data));      
+                _roots.push_back(atoi((char*)data.mv_data));
             }
         }
         CHECK(rc == MDB_NOTFOUND, "mdb_cursor_get");
@@ -313,86 +415,60 @@ class AnnoyIndex : public AnnoyIndexInterface<S, T> {
         mdb_cursor_close(cursor);
         mdb_txn_abort(txn);
         
-        return roots;
+        return ;
         
-    }
+    } */
     
-
-    
-    //not protected by txn, only use it when you know what you are doing 
   protected:
   
-    
-    bool _set_roots() {
+    // node 0, ..., _tree_count - 1 will be reserved for root nodes    
+    bool init_roots() {
       
       MDB_val key, data;
       MDB_txn *txn;
       MDB_dbi dbi;
       bool success = true;
       
+       _roots.clear();
       
+
       E(mdb_txn_begin(_env, NULL, 0 , &txn));
-      E(mdb_dbi_open(txn, DBN_ROOT, MDB_CREATE, &dbi));
-      
-      
+      MDB_dbi dbi_tree;
+      E(mdb_dbi_open(txn, DBN_TREE, MDB_CREATE, &dbi_tree));
       for (int i = 0; i < _tree_count; i ++) {
-        
-        char tmp[200];
-        sprintf(tmp, "%d", i);
-        string kk = tmp;
-        key.mv_data = (uint8_t*) kk.c_str();
-        key.mv_size = kk.length();
-        sprintf(tmp, "rt_%d", i);
-        string buf = tmp;
-        data.mv_data = (uint8_t*)buf.c_str();
-        data.mv_size = buf.length();
-        int retval = mdb_put(txn, dbi, &key, &data, 0);
+        key.mv_data = (uint8_t*) & i;
+        key.mv_size = sizeof(int);
+        tree_node tn;
+        tn.set_index(i);
+        tn.set_leaf(true);
+        tn.clear_left();
+        tn.clear_right();
+        string str;
+        tn.SerializeToString(&str);
+        data.mv_data = (uint8_t*)str.c_str();
+        data.mv_size = str.length();
+        int retval = mdb_put(txn, dbi_tree, &key, &data, 0);
         if (retval != MDB_SUCCESS) {
             printf("failed add root for tree %d, due to %s \n" , i, mdb_strerror(retval));
-          
-          printf("failed to put %d, %d : key: %p %.*s, data: %p %.*s, due to : %s\n",
-                 (int) key.mv_size, (int) data.mv_size, key.mv_data,  (int) key.mv_size,  (char *) key.mv_data,
-                 data.mv_data, (int) data.mv_size, (char *) data.mv_data, mdb_strerror(retval));
-          
             success = false;
+            break;
         }
+        _roots.push_back(i);
       }
-      
-      if (success) {
-        MDB_dbi dbi_tree;
-        E(mdb_dbi_open(txn, DBN_TREE, MDB_CREATE, &dbi_tree));
-        for (int i = 0; i < _tree_count; i ++) {
-          key.mv_data = (uint8_t*) & i;
-          key.mv_size = sizeof(int);
-          tree_node tn;
-          tn.set_index(i);
-          tn.set_leaf(true);
-          string str;
-          tn.SerializeToString(&str);
-          data.mv_data = (uint8_t*)str.c_str();
-          data.mv_size = str.length();
-          int retval = mdb_put(txn, dbi, &key, &data, 0);
-          if (retval != MDB_SUCCESS) {
-              printf("failed add root for tree %d, due to %s \n" , i, mdb_strerror(retval));
-              success = false;
-              break;
-          }
-        }
-      }
-      
       if (success) {
         E(mdb_txn_commit(txn));
       } else {
         mdb_txn_abort(txn);
+        _roots.clear();
       }
       return success;
     }
   
   
-  int _get_max_tree_index() {
-    
-    
-  }
+    int _get_max_tree_index() {
+      
+      
+    }
     
     
     bool _add_node(tree_node & tn) {

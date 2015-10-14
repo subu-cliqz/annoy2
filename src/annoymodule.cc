@@ -43,6 +43,7 @@ typedef struct {
   int tree_count;
   int max_reader;
   long max_size;
+  int read_only;
   AnnoyIndexInterface<int32_t, float>* ptr;
 } py_annoy;
 
@@ -66,18 +67,19 @@ py_an_init(py_annoy *self, PyObject *args, PyObject *kwds) {
   const char *metric;
   const char *file_dir;
 
+  
 
-  if (!PyArg_ParseTuple(args, "iisiils", &self->f,  &self->K, 
-    &file_dir, &self->tree_count, &self->max_reader, &self->max_size, &metric))
+  if (!PyArg_ParseTuple(args, "iisiilis", &self->f,  &self->K, 
+    &file_dir, &self->tree_count, &self->max_reader, &self->max_size, &self->read_only, &metric))
     return -1;
   switch(metric[0]) {
   case 'a':
     self->ptr = new AnnoyIndex<int32_t, float, Angular, Kiss64Random>(self->f, self->K,  
-      self->tree_count, file_dir, self->max_reader, self->max_size);
+      self->tree_count, file_dir, self->max_reader, self->max_size, self->read_only);
     break;
   case 'e':
     self->ptr = new AnnoyIndex<int32_t, float, Euclidean, Kiss64Random>(self->f,self->K,  
-      self->tree_count, file_dir, self->max_reader, self->max_size);
+      self->tree_count, file_dir, self->max_reader, self->max_size, self->read_only);
     break;
   }
   return 0;
@@ -99,6 +101,22 @@ static PyMemberDef py_annoy_members[] = {
   {NULL}	/* Sentinel */
 };
 
+static PyObject *
+py_an_create(py_annoy *self, PyObject *args) {
+  char *filename;
+  bool res = false;
+  if (!self->ptr) 
+    return Py_None;
+
+
+  res = self->ptr->create();
+
+  if (!res) {
+    PyErr_SetFromErrno(PyExc_IOError);
+    return NULL;
+  }
+  Py_RETURN_TRUE;
+}
 
 static PyObject *
 py_an_load(py_annoy *self, PyObject *args) {
@@ -314,6 +332,7 @@ static PyMethodDef AnnoyMethods[] = {
   {"add_item",(PyCFunction)py_an_add_item, METH_VARARGS, ""},
   {"build",(PyCFunction)py_an_build, METH_VARARGS, ""},
   {"unload",(PyCFunction)py_an_unload, METH_VARARGS, ""},
+  {"create",(PyCFunction)py_an_create, METH_VARARGS, ""},
   {"get_distance",(PyCFunction)py_an_get_distance, METH_VARARGS, ""},
   {"get_n_items",(PyCFunction)py_an_get_n_items, METH_VARARGS, ""},
   {"verbose",(PyCFunction)py_an_verbose, METH_VARARGS, ""},
