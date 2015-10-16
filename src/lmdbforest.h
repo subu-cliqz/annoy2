@@ -151,7 +151,7 @@ class AnnoyIndex : public AnnoyIndexInterface<S, T> {
     }
     
     bool open_as_write(const char* database_directory, int maxreaders, uint64_t maxsize) {
-      printf("init write dir: %s, maxreader %d, maxsize %lld\n", database_directory, maxreaders, maxsize);
+      //printf("init write dir: %s, maxreader %d, maxsize %lld\n", database_directory, maxreaders, maxsize);
       close_db();
       E(mdb_env_create(&_env));
       E(mdb_env_set_maxreaders(_env, maxreaders));
@@ -230,16 +230,17 @@ class AnnoyIndex : public AnnoyIndexInterface<S, T> {
       data_info di, dj;
       _get_raw_data(i, di);
       _get_raw_data(j, dj);
-      printf("get raw data completed\n");
-      fflush(stdout);
-
-      di.PrintDebugString();
-      dj.PrintDebugString();
       T dist =  D::distance(di, dj, _f);
-      printf("distance is %f\n", dist);
+      if (_verbose) {
+        printf("get raw data completed\n");
+        printf("distance is %f\n", dist);
+        fflush(stdout);
+      }
 
+      //di.PrintDebugString();
+      //dj.PrintDebugString();
+      
       mdb_txn_abort(_txn);
-      printf("completed\n");
       return dist;
 
     }
@@ -255,14 +256,16 @@ class AnnoyIndex : public AnnoyIndexInterface<S, T> {
 
     void get_nns_by_vector(const T* w, size_t n, size_t search_k, 
       vector<S>* result, vector<T>* distances) {
-      printf("c++: get_nns_by_vector %d, %d\n", n, search_k);
-
+      
+      if (_verbose) {
+        printf("c++: get_nns_by_vector %d, %d\n", n, search_k);
+      }
 
       E(mdb_txn_begin(_env, NULL, MDB_RDONLY, &_txn));
       E(mdb_dbi_open(_txn, DBN_RAW, MDB_INTEGERKEY, &_dbi_raw));
       E(mdb_dbi_open(_txn, DBN_TREE, MDB_INTEGERKEY, &_dbi_tree));
 
-       _get_all_nns(w, n, search_k, result, distances);
+      _get_all_nns(w, n, search_k, result, distances);
       mdb_txn_abort(_txn);
       
       return ;
@@ -280,8 +283,6 @@ class AnnoyIndex : public AnnoyIndexInterface<S, T> {
       if (search_k == (size_t) (-1)) {
         search_k =   n * _tree_count; // slightly arbitrary default value
       }
-      //printf("c++: get_nns_by_vector %d, %d\n", n, search_k);
-    
 
       //put all root nodes in priority queue
       for (size_t i = 0; i < _tree_count; i++) {
@@ -290,12 +291,6 @@ class AnnoyIndex : public AnnoyIndexInterface<S, T> {
     
       vector<S> nns;
       while (nns.size() < search_k && !q.empty()) {
-
-        if (_verbose) {
-          //printf("c++: get_nns_by_vector nns size %d, queue size : %d\n", nns.size(), q.size());
-        }
-    
-
         const pair<T, S>& top = q.top();
         T d = top.first;
         S i = top.second;
@@ -349,6 +344,11 @@ class AnnoyIndex : public AnnoyIndexInterface<S, T> {
 
 
     S get_n_items() {
+      E(mdb_txn_begin(_env, NULL, 0, &_txn));
+      E(mdb_dbi_open(_txn, DBN_RAW, 0, &_dbi_raw));
+      int max = _get_max_data_index();
+      mdb_txn_abort(_txn);
+
       return 0;
     }
     
@@ -357,6 +357,16 @@ class AnnoyIndex : public AnnoyIndexInterface<S, T> {
     }
     
     void get_item(S item, vector<T>* v)  {
+      data_info di;
+      E(mdb_txn_begin(_env, NULL, 0, &_txn));
+      E(mdb_dbi_open(_txn, DBN_RAW, 0, &_dbi_raw));
+      bool result = _get_raw_data(item, di);
+      if (result) {
+        for (int i = 0; i < _f; i ++ ) {
+            v->push_back(di.data(i));
+        }
+      }
+      mdb_txn_abort(_txn);
       return;
     };
 
@@ -366,22 +376,13 @@ class AnnoyIndex : public AnnoyIndexInterface<S, T> {
       E(mdb_txn_begin(_env, NULL, 0, &_txn));
       E(mdb_dbi_open(_txn, DBN_RAW, MDB_CREATE | MDB_INTEGERKEY, &_dbi_raw));
       E(mdb_dbi_open(_txn, DBN_TREE, MDB_CREATE | MDB_INTEGERKEY, &_dbi_tree));
+      d.set_id(data_id);
       _add_raw_data(data_id, d);
-
-
-      if (_verbose) {
-        printf ("raw data added for %d\n", data_id);
-        fflush(stdout);
-      }
-
-        
       for (int i = 0; i < _tree_count; i ++ ) {
         _add_item_to_tree(i, data_id, d);
       }
 
-      printf("about to commit...");
       mdb_txn_commit(_txn);
-      printf("done\n");
       return;
     }
 
@@ -415,7 +416,6 @@ class AnnoyIndex : public AnnoyIndexInterface<S, T> {
       tree_node tn;
       bool result = _get_node_by_index(node_index, tn);
       if (!result)  {
-
         printf("ERROR: can not insert new item into node %d \n", node_index);
         return;
       }
@@ -479,36 +479,6 @@ class AnnoyIndex : public AnnoyIndexInterface<S, T> {
       return;
 
     }
-    /*
-    void get_roots() {
- 
-        MDB_val key, data;
-        MDB_txn *txn;
-        MDB_cursor *cursor;
-        MDB_dbi dbi;
-        
-        E(mdb_txn_begin(_env, NULL, MDB_RDONLY, &txn));
-        E(mdb_dbi_open(txn, DBN_ROOT, 0, &dbi));
-        E(mdb_cursor_open(txn, dbi, &cursor));
-        rc = mdb_cursor_get(cursor, &key, &data, MDB_FIRST);
-        
-        _roots.push_back(atoi((char*)data.mv_data));
-        
-        printf("%s\n", mdb_strerror(rc));
-        if (rc == 0) {
-            while ((rc = mdb_cursor_get(cursor, &key, &data, MDB_NEXT)) == 0) {
-                printf("get root %d with node id: %d \n", _roots.size(), atoi((char*)data.mv_data));      
-                _roots.push_back(atoi((char*)data.mv_data));
-            }
-        }
-        CHECK(rc == MDB_NOTFOUND, "mdb_cursor_get");
-        mdb_dbi_close(_env, dbi);
-        mdb_cursor_close(cursor);
-        mdb_txn_abort(txn);
-        
-        return ;
-        
-    } */
     
   protected:
   
@@ -588,6 +558,30 @@ class AnnoyIndex : public AnnoyIndexInterface<S, T> {
         return index_last;
 
     }
+    int _get_max_data_index() {
+      
+        MDB_val key, data;
+        MDB_cursor *cursor;
+        
+        
+        E(mdb_cursor_open(_txn, _dbi_raw, &cursor));
+        rc = mdb_cursor_get(cursor, &key, &data, MDB_LAST);
+
+        int index_last = 0;
+        memcpy(&index_last, key.mv_data, sizeof(int));
+        
+        //int index_last = atoi((char*)key.mv_data);
+
+        mdb_cursor_close(cursor);
+        
+        if (_verbose) {
+          printf("found the last index is %d \n", index_last);
+        }
+
+
+        return index_last;
+
+    }
     
     
     int _add_node(tree_node & tn) {
@@ -630,11 +624,12 @@ class AnnoyIndex : public AnnoyIndexInterface<S, T> {
              (int) key.mv_size, (int) data.mv_size, key.mv_data,  (int) key.mv_size,  (char *) key.mv_data,
              data.mv_data, (int) data.mv_size, (char *) data.mv_data, mdb_strerror(retval));
              */
-            if (tn.leaf())
-              printf(" update tree leaf node  %d successfully . \n", index);
-            else 
-              printf(" update tree non-leaf node  %d successfully . \n", index);
-            
+            if (_verbose) {
+              if (tn.leaf())
+                printf(" update tree leaf node  %d successfully . \n", index);
+              else 
+                printf(" update tree non-leaf node  %d successfully . \n", index);
+            }
 
             success = 1;
         }
@@ -715,6 +710,13 @@ class AnnoyIndex : public AnnoyIndexInterface<S, T> {
              data.mv_data, (int) data.mv_size, (char *) data.mv_data, mdb_strerror(retval));
              */
             success = 1;
+
+
+            if (_verbose) {
+              printf ("raw data added for %d\n", data_id);
+              fflush(stdout);
+            }
+
         }
         else if (retval == MDB_KEYEXIST) {
             printf(" key/data pair is duplicated.\n");

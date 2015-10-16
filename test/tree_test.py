@@ -18,7 +18,7 @@ class TreeTest(TestCase):
         os.system("mkdir test_db")
         f = 3
         i = AnnoyIndex(f, 3, "test_db", 10, 1000, 3048576000, 0)
-        i.verbose(True)
+        #i.verbose(True)
         i.create()
         for k in range(10):
             i.display_node(k)
@@ -51,13 +51,48 @@ class TreeTest(TestCase):
         self.assertEqual(i2.get_nns_by_vector([1, 2, 3], 3), [0, 1, 2])
         self.assertEqual(i2.get_nns_by_vector([2, 0, 1], 3), [2, 0, 1])
 
-    def test_add_item_1(self):
+    def test_get_item(self):
+        print "test_get_item"
+        os.system("rm -rf test_db")
+        os.system("mkdir test_db")
+        f = 3
+        i = AnnoyIndex(f, 2, "test_db", 10, 1000, 3048576000, 0)
+        #i.verbose(True)
+        i.create()
+
+        i.add_item(0, [0, 0, 1])
+        self.assertEqual(i.get_item(), 1);
+        i.add_item(1, [0, 1, 0])
+        self.assertEqual(i.get_item(), 2);
+        i.add_item(2, [1, 0, 0])
+        self.assertEqual(i.get_item(), 3);
+     
+    def test_get_n_item(self):
+        print "test_get_n_item"
+        os.system("rm -rf test_db")
+        os.system("mkdir test_db")
+        f = 3
+        i = AnnoyIndex(f, 2, "test_db", 10, 1000, 3048576000, 0)
+        i.create()
+
+        i.add_item(0, [0, 0, 1])
+        i.add_item(1, [0, 1, 0])
+        i.add_item(2, [1, 0, 0])
+        i1 = i.get_n_items(0);
+        self.assertEqual(i1, [0, 0, 1]);
+        i2 = i.get_n_items(1);
+        self.assertEqual(i2, [0, 1, 0]);
+        i3 = i.get_n_items(2);
+        self.assertEqual(i3, [1, 0, 0]);
+
+
+    def test1_add_item_1(self):
         print "test_set_root"
         os.system("rm -rf test_db")
         os.system("mkdir test_db")
         f = 3
         i = AnnoyIndex(f, 2, "test_db", 10, 1000, 3048576000, 0)
-        i.verbose(True)
+        #i.verbose(True)
         i.create()
         for k in range(10):
             i.display_node(k)

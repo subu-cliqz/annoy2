@@ -246,13 +246,13 @@ struct Angular {
     size_t j = random.index(count-1);
     j += (j >= i); // ensure that i != j
     
-    printf("use data %d and %d as pivot for splitting ... ", i, j);
+    //printf("use data %d and %d as pivot for splitting ... ", i, j);
 
     data_info iv = nodes[i];
     data_info jv = nodes[j];
 
-    iv.PrintDebugString();
-    jv.PrintDebugString();
+    //iv.PrintDebugString();
+    //jv.PrintDebugString();
     
     T i_norm = get_norm1(iv, f);
     T j_norm = get_norm1(jv, f);
