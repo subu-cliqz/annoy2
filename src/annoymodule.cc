@@ -67,7 +67,7 @@ py_an_init(py_annoy *self, PyObject *args, PyObject *kwds) {
   const char *metric;
   const char *file_dir;
 
-  
+
 
   if (!PyArg_ParseTuple(args, "iisiilis", &self->f,  &self->K, 
     &file_dir, &self->tree_count, &self->max_reader, &self->max_size, &self->read_only, &metric))
@@ -233,6 +233,31 @@ py_an_get_item_vector(py_annoy *self, PyObject *args) {
   return l;
 }
 
+static PyObject* 
+py_an_display_node(py_annoy *self, PyObject *args) {
+ 
+  int32_t item;
+  if (!self->ptr) 
+    return Py_None;
+  if (!PyArg_ParseTuple(args, "i", &item))
+    return Py_None;
+  self->ptr->display_node(item);
+
+  Py_RETURN_NONE;
+}
+
+static PyObject* 
+py_an_display_raw(py_annoy *self, PyObject *args) {
+ 
+  int32_t item;
+  if (!self->ptr) 
+    return Py_None;
+  if (!PyArg_ParseTuple(args, "i", &item))
+    return Py_None;
+  self->ptr->display_raw(item);
+
+  Py_RETURN_NONE;
+}
 
 static PyObject* 
 py_an_add_item(py_annoy *self, PyObject *args) {
@@ -333,6 +358,8 @@ static PyMethodDef AnnoyMethods[] = {
   {"build",(PyCFunction)py_an_build, METH_VARARGS, ""},
   {"unload",(PyCFunction)py_an_unload, METH_VARARGS, ""},
   {"create",(PyCFunction)py_an_create, METH_VARARGS, ""},
+  {"display_node",(PyCFunction)py_an_display_node, METH_VARARGS, ""},
+  {"display_raw",(PyCFunction)py_an_display_raw, METH_VARARGS, ""},
   {"get_distance",(PyCFunction)py_an_get_distance, METH_VARARGS, ""},
   {"get_n_items",(PyCFunction)py_an_get_n_items, METH_VARARGS, ""},
   {"verbose",(PyCFunction)py_an_verbose, METH_VARARGS, ""},

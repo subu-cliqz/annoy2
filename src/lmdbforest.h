@@ -79,6 +79,9 @@ public:
 
 
   virtual bool create()=0;
+  virtual void display_node(S item) = 0;
+  virtual void display_raw(S item) = 0;
+  
      
 };
 
@@ -190,6 +193,7 @@ class AnnoyIndex : public AnnoyIndexInterface<S, T> {
       for(int i = 0; i < _f; i ++ ) {
         d.add_data(w[i]);
       }
+      d.set_id(item);
       
       add_item(item, d);
       return;
@@ -255,8 +259,8 @@ class AnnoyIndex : public AnnoyIndexInterface<S, T> {
 
 
       E(mdb_txn_begin(_env, NULL, MDB_RDONLY, &_txn));
-      E(mdb_dbi_open(_txn, DBN_RAW, 0, &_dbi_raw));
-      E(mdb_dbi_open(_txn, DBN_TREE, 0, &_dbi_tree));
+      E(mdb_dbi_open(_txn, DBN_RAW, MDB_INTEGERKEY, &_dbi_raw));
+      E(mdb_dbi_open(_txn, DBN_TREE, MDB_INTEGERKEY, &_dbi_tree));
 
        _get_all_nns(w, n, search_k, result, distances);
       mdb_txn_abort(_txn);
@@ -268,8 +272,13 @@ class AnnoyIndex : public AnnoyIndexInterface<S, T> {
       
       std::priority_queue<pair<T, S> > q;
 
+
+      std::map<S, bool> r;
+      size_t c = 0;  //retrieved count
+
+
       if (search_k == (size_t) (-1)) {
-        search_k = n * _tree_count; // slightly arbitrary default value
+        search_k =   n * _tree_count; // slightly arbitrary default value
       }
       //printf("c++: get_nns_by_vector %d, %d\n", n, search_k);
     
@@ -280,10 +289,6 @@ class AnnoyIndex : public AnnoyIndexInterface<S, T> {
       }
     
       vector<S> nns;
-     
-
-
-
       while (nns.size() < search_k && !q.empty()) {
 
         if (_verbose) {
@@ -297,10 +302,14 @@ class AnnoyIndex : public AnnoyIndexInterface<S, T> {
         tree_node tn;
         bool result = _get_node_by_index(i, tn);
         q.pop();
-        if (tn.leaf()) {
 
+        if (tn.leaf()) {
           for (int i = 0; i < tn.items_size(); i ++) {
-              nns.push_back(tn.items(i));
+            int w = tn.items(i);
+            if (r.find(w) == r.end()) {
+              nns.push_back(w);
+              r.insert(make_pair(w, true));
+            }
           }
         } else {
 
@@ -312,16 +321,11 @@ class AnnoyIndex : public AnnoyIndexInterface<S, T> {
       }
 
       // Get distances for all items
-      // To avoid calculating distance multiple times for any items, sort by id
-      sort(nns.begin(), nns.end());
       vector<pair<T, S> > nns_dist;
-      S last = -1;
       for (size_t i = 0; i < nns.size(); i++) {
+        if (_verbose) printf(" NN candidates %d : %d \n", i, nns[i]);
         S j = nns[i];
-        if (j == last)
-          continue;
-        last = j;
-
+  
         data_info di;
         bool r = _get_raw_data(j, di);
 
@@ -342,8 +346,6 @@ class AnnoyIndex : public AnnoyIndexInterface<S, T> {
       }
 
     }
-     
-  
 
 
     S get_n_items() {
@@ -362,56 +364,120 @@ class AnnoyIndex : public AnnoyIndexInterface<S, T> {
     void add_item(int data_id, data_info& d) {
 
       E(mdb_txn_begin(_env, NULL, 0, &_txn));
-      E(mdb_dbi_open(_txn, DBN_RAW, MDB_CREATE, &_dbi_raw));
-      E(mdb_dbi_open(_txn, DBN_TREE, MDB_CREATE, &_dbi_tree));
+      E(mdb_dbi_open(_txn, DBN_RAW, MDB_CREATE | MDB_INTEGERKEY, &_dbi_raw));
+      E(mdb_dbi_open(_txn, DBN_TREE, MDB_CREATE | MDB_INTEGERKEY, &_dbi_tree));
       _add_raw_data(data_id, d);
+
+
       if (_verbose) {
-        printf ("adding raw data \n");
+        printf ("raw data added for %d\n", data_id);
         fflush(stdout);
       }
+
         
       for (int i = 0; i < _tree_count; i ++ ) {
-        _add_item_to_tree(i, data_id);
+        _add_item_to_tree(i, data_id, d);
       }
+
+      printf("about to commit...");
       mdb_txn_commit(_txn);
+      printf("done\n");
       return;
     }
-  
-    void _add_item_to_tree(int node_index, int data_id) {
+
+
+    //for debug
+
+    void display_node(S node_index) {
+    
+      E(mdb_txn_begin(_env, NULL, 0, &_txn));
+      E(mdb_dbi_open(_txn, DBN_TREE, MDB_INTEGERKEY, &_dbi_tree));
+      
+      tree_node tn;
+      _get_node_by_index(node_index, tn);
+      tn.PrintDebugString();
+      mdb_txn_abort(_txn);
+
+    }
+    void display_raw(S data_index) {
+    
+      E(mdb_txn_begin(_env, NULL, 0, &_txn));
+      E(mdb_dbi_open(_txn, DBN_RAW, MDB_INTEGERKEY, &_dbi_raw));
+      
+      data_info di;
+      _get_raw_data(data_index, di);
+      di.PrintDebugString();
+      mdb_txn_abort(_txn);
+
+    }  
+    void _add_item_to_tree(int node_index, int data_id, data_info& data) {
       //check node type
       tree_node tn;
       bool result = _get_node_by_index(node_index, tn);
       if (!result)  {
+
+        printf("ERROR: can not insert new item into node %d \n", node_index);
         return;
       }
 
-      if (tn.leaf() == true) {
-          
-        //check if it needs to split
-        int size = tn.items_size() ;
-        if (size + 1 <= _K) {
-          tn.add_items(data_id);
-          _update_tree_node(node_index, tn);
-        } else {
-            //split
-          
-          vector<data_info> data_pt;
-          for (int k = 0; k < tn.items_size(); k ++) {
-            data_info d;
-            _get_raw_data(tn.items(k), d);
-            data_pt.push_back(d);
-          }
-          tree_node new_node;
-          tree_node left_node;
-          tree_node right_node;
-          D::split(tn, data_pt, new_node, left_node, right_node, _random, _f );
-          _update_tree_node(node_index, new_node);
-          _add_node(left_node);
-          _add_node(right_node);
-          
-        }
+      if (_verbose) {
+        printf("add item %d to tree node ... \n", data_id, node_index); fflush(stdout);
       }
+
+      if (tn.leaf() && tn.items_size() < _K) {
+        tn.add_items(data_id);
+        _update_tree_node(node_index, tn);
+        if (_verbose) {
+          printf("add item %d node %d directly\n ", data_id, node_index); fflush(stdout);
+        }
+        return ;
+      }
+
+      if (tn.leaf() && tn.items_size() >= _K) {
+        //split
+        vector<data_info> data_pt;
+        for (int k = 0; k < tn.items_size(); k ++) {
+          data_info d;
+          _get_raw_data(tn.items(k), d);
+          data_pt.push_back(d);
+        }
+       
+
+        tree_node new_node;
+        tree_node left_node;
+        tree_node right_node;
+
+
+        D::split(tn, data_pt, new_node, left_node, right_node, _random, _f );
+
+        if (_verbose) {
+          printf(" split %d node into left, and right... ", data_pt.size());
+          printf(" left nodes : ");
+          left_node.PrintDebugString();
+          printf(" right nodes : ");
+          right_node.PrintDebugString();             
+        }
+         
+
+        int left_index = _add_node(left_node);
+        int right_index = _add_node(right_node);
+        new_node.set_left(left_index);
+        new_node.set_right(right_index);
+        new_node.set_leaf(false);
         
+        _update_tree_node(node_index, new_node);
+        _get_node_by_index(node_index, tn);
+      } 
+
+
+      bool side = D::side(tn, data, _f, _random);
+      if (side) {
+          _add_item_to_tree(tn.left(), data_id, data);   
+      } else {
+          _add_item_to_tree(tn.right(), data_id, data);   
+      }
+      return;
+
     }
     /*
     void get_roots() {
@@ -454,12 +520,12 @@ class AnnoyIndex : public AnnoyIndexInterface<S, T> {
       MDB_dbi dbi;
       bool success = true;
       
-       _roots.clear();
+      _roots.clear();
       
 
       E(mdb_txn_begin(_env, NULL, 0 , &txn));
       MDB_dbi dbi_tree;
-      E(mdb_dbi_open(txn, DBN_TREE, MDB_CREATE, &dbi_tree));
+      E(mdb_dbi_open(txn, DBN_TREE, MDB_CREATE | MDB_INTEGERKEY, &dbi_tree));
       for (int i = 0; i < _tree_count; i ++) {
         key.mv_data = (uint8_t*) & i;
         key.mv_size = sizeof(int);
@@ -468,6 +534,7 @@ class AnnoyIndex : public AnnoyIndexInterface<S, T> {
         tn.set_leaf(true);
         tn.clear_left();
         tn.clear_right();
+        tn.clear_items();
         string str;
         tn.SerializeToString(&str);
         data.mv_data = (uint8_t*)str.c_str();
@@ -487,21 +554,57 @@ class AnnoyIndex : public AnnoyIndexInterface<S, T> {
         mdb_txn_abort(txn);
         _roots.clear();
       }
+      if (success && _verbose) {
+        for (int i = 0; i < _tree_count; i ++) {
+          display_node(i);
+        }
+      }
+
       return success;
     }
   
   
     int _get_max_tree_index() {
       
-      
+        MDB_val key, data;
+        MDB_cursor *cursor;
+        
+        
+        E(mdb_cursor_open(_txn, _dbi_tree, &cursor));
+        rc = mdb_cursor_get(cursor, &key, &data, MDB_LAST);
+
+        int index_last = 0;
+        memcpy(&index_last, key.mv_data, sizeof(int));
+        
+        //int index_last = atoi((char*)key.mv_data);
+
+        mdb_cursor_close(cursor);
+        
+        if (_verbose) {
+          printf("found the last index is %d \n", index_last);
+        }
+
+
+        return index_last;
+
     }
     
     
-    bool _add_node(tree_node & tn) {
+    int _add_node(tree_node & tn) {
         
         //get the largest index
         int max_index = _get_max_tree_index();
-        return _update_tree_node(max_index + 1, tn);
+
+        if (_verbose) {
+          printf("adding node %d : ", max_index + 1);
+        }
+        tn.set_index(max_index + 1);
+        bool result = _update_tree_node(max_index + 1, tn);
+       //max_index = _get_max_tree_index();
+        if (result)
+          return max_index + 1;
+        return -1;
+        
     }
     
     bool _update_tree_node(int index, tree_node & tn) {
@@ -516,6 +619,7 @@ class AnnoyIndex : public AnnoyIndexInterface<S, T> {
         
         data.mv_size = data_buffer.length();
         data.mv_data = (uint8_t*)data_buffer.c_str();
+
         
         int retval = mdb_put(_txn, _dbi_tree, &key, &data, 0);
         
@@ -526,6 +630,12 @@ class AnnoyIndex : public AnnoyIndexInterface<S, T> {
              (int) key.mv_size, (int) data.mv_size, key.mv_data,  (int) key.mv_size,  (char *) key.mv_data,
              data.mv_data, (int) data.mv_size, (char *) data.mv_data, mdb_strerror(retval));
              */
+            if (tn.leaf())
+              printf(" update tree leaf node  %d successfully . \n", index);
+            else 
+              printf(" update tree non-leaf node  %d successfully . \n", index);
+            
+
             success = 1;
         }
         else if (retval == MDB_KEYEXIST) {
@@ -538,7 +648,9 @@ class AnnoyIndex : public AnnoyIndexInterface<S, T> {
             
             success = 0;
         }
-        
+
+
+
         return success ;
 
     }

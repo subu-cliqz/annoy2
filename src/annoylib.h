@@ -132,7 +132,7 @@ struct Angular {
       qq += (y.data(z)) * (y.data(z));
       pq += (y.data(z)) * (*x);
     }
-    printf("%f, %f, %f\n", pp, qq, pq);
+    //printf("%f, %f, %f\n", pp, qq, pq);
     T ppqq = pp * qq;
     if (ppqq > 0) return 2.0 - 2.0 * pq / sqrt(ppqq);
     else return 2.0; // cos is 0
@@ -148,7 +148,7 @@ struct Angular {
       qq += (y.data(z)) * (y.data(z));
       pq += (y.data(z)) * (x.data(z));
     }
-    printf("%f, %f, %f\n", pp, qq, pq);
+   // printf("%f, %f, %f\n", pp, qq, pq);
     T ppqq = pp * qq;
     if (ppqq > 0) return 2.0 - 2.0 * pq / sqrt(ppqq);
     else return 2.0; // cos is 0
@@ -174,7 +174,16 @@ struct Angular {
     for (int z = 0; z < f; z++) {
       dot += tn.v(z) * y[z];
     }
-    dot += tn.t();
+   // dot += tn.t();
+    return dot;
+  }
+
+  static inline T margin(const tree_node& tn, data_info& y, int f) {
+    T dot = 0;
+    for (int z = 0; z < f; z++) {
+      dot += tn.v(z) * y.data(z);
+    }
+   // dot += tn.t();
     return dot;
   }
 
@@ -191,6 +200,24 @@ struct Angular {
     else
       return random.flip();
   }
+
+  static inline bool side(const tree_node& tree, data_info& y, int f, Random& random) {
+    T dot = margin(tree, y, f);
+    if (dot != 0)
+      return (dot > 0);
+    else
+      return random.flip();
+  }
+
+
+  static inline bool side(tree_node& tn, const T* y, int f, Random& random) {
+    T dot = margin(tn, y, f);
+    if (dot != 0)
+      return (dot > 0);
+    else
+      return random.flip();
+  }
+
   static inline void create_split(const vector<Node*>& nodes, int f, Random& random, Node* n) {
     // Sample two random points from the set of nodes
     // Calculate the hyperplane equidistant from them
@@ -219,8 +246,13 @@ struct Angular {
     size_t j = random.index(count-1);
     j += (j >= i); // ensure that i != j
     
+    printf("use data %d and %d as pivot for splitting ... ", i, j);
+
     data_info iv = nodes[i];
     data_info jv = nodes[j];
+
+    iv.PrintDebugString();
+    jv.PrintDebugString();
     
     T i_norm = get_norm1(iv, f);
     T j_norm = get_norm1(jv, f);
@@ -235,9 +267,27 @@ struct Angular {
       t += - d * (iv.data(z) + jv.data(z)) / 2;
     }
 
+    new_node.set_t(0.0);
+    new_node.set_leaf(false);
+    left_node.set_leaf(true);
+    right_node.set_leaf(true);
 
-    
-    
+
+    T* w_data = new T[f];
+    for (int w = 0; w < nodes.size(); w ++ ){
+      data_info d = nodes[w];
+      for (int s = 0; s < f; s ++) {
+        w_data[s] = d.data(s);
+      }
+
+
+      bool sd = side(new_node, w_data, f, random);
+      if (sd) {
+        left_node.add_items(nodes[w].id());
+      } else {
+        right_node.add_items(nodes[w].id());
+      } 
+    }    
   }
   
   
@@ -289,6 +339,12 @@ struct Euclidean {
       dot += tn.v(z) * y[z];
     return dot;
   }
+  static inline T margin(tree_node& tn, data_info& y, int f) {
+    T dot = tn.t();
+    for (int z = 0; z < f; z++)
+      dot += tn.v(z) * y.data(z);
+    return dot;
+  }
 
   static inline T margin(const Node* n, const T* y, int f) {
     T dot = n->a;
@@ -304,6 +360,14 @@ struct Euclidean {
       return random.flip();
   }
   
+  static inline bool side(tree_node& tn, data_info& y, int f, Random& random) {
+    T dot = margin(tn, y, f);
+    if (dot != 0)
+      return (dot > 0);
+    else
+      return random.flip();
+  }
+
   static inline void split(const tree_node& tn, const vector<data_info>& nodes,
                            tree_node& new_node,  tree_node& left_node, tree_node& right_node,
                            Random& random, int f) {

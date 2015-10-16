@@ -12,7 +12,7 @@ class TestCase(unittest.TestCase):
 
 class TreeTest(TestCase):
 
-    def test_set_root(self):
+    def tes1t_set_root(self):
         print "test_set_root"
         os.system("rm -rf test_db")
         os.system("mkdir test_db")
@@ -20,13 +20,26 @@ class TreeTest(TestCase):
         i = AnnoyIndex(f, 3, "test_db", 10, 1000, 3048576000, 0)
         i.verbose(True)
         i.create()
-
+        for k in range(10):
+            i.display_node(k)
 
         i.add_item(0, [0, 0, 1])
-        i.add_item(1, [0, 1, 0])
-        i.add_item(2, [1, 0, 0])
-      
+        print "after adding 1 data"
+        for k in range(10):
+            i.display_node(k)
 
+        i.add_item(1, [0, 1, 0])
+        print "after adding 2 data"
+        for k in range(10):
+            i.display_node(k)
+
+        i.add_item(2, [1, 0, 0])
+        print "after adding 3 data"
+        for k in range(10):
+            i.display_node(k)
+
+        print "get nns by vector [3,2,1]"
+        print i.get_nns_by_vector([3, 2, 1], 3)
         self.assertEqual(i.get_nns_by_vector([3, 2, 1], 3), [2, 1, 0])
         self.assertEqual(i.get_nns_by_vector([1, 2, 3], 3), [0, 1, 2])
         self.assertEqual(i.get_nns_by_vector([2, 0, 1], 3), [2, 0, 1])
@@ -37,6 +50,41 @@ class TreeTest(TestCase):
         self.assertEqual(i2.get_nns_by_vector([3, 2, 1], 3), [2, 1, 0])
         self.assertEqual(i2.get_nns_by_vector([1, 2, 3], 3), [0, 1, 2])
         self.assertEqual(i2.get_nns_by_vector([2, 0, 1], 3), [2, 0, 1])
+
+    def test_add_item_1(self):
+        print "test_set_root"
+        os.system("rm -rf test_db")
+        os.system("mkdir test_db")
+        f = 3
+        i = AnnoyIndex(f, 2, "test_db", 10, 1000, 3048576000, 0)
+        i.verbose(True)
+        i.create()
+        for k in range(10):
+            i.display_node(k)
+
+        i.add_item(0, [0, 0, 1])
+        print "after adding 1 data"
+        for k in range(10):
+            i.display_node(k)
+
+        i.add_item(1, [0, 1, 0])
+        print "after adding 2 data"
+        for k in range(10):
+            i.display_node(k)
+
+        i.add_item(2, [1, 0, 0])
+        print "after adding 3 data"
+        for k in range(100):
+            print "node %d" % k
+            i.display_node(k)
+
+       
+
+        print "get nns by vector [3,2,1]"
+        self.assertEqual(i.get_nns_by_vector([3, 2, 1], 3), [2, 1, 0])
+        self.assertEqual(i.get_nns_by_vector([1, 2, 3], 3), [0, 1, 2])
+        self.assertEqual(i.get_nns_by_vector([2, 0, 1], 3), [2, 0, 1])
+
 
 
 
