@@ -314,9 +314,7 @@ class AnnoyIndex : public AnnoyIndexInterface<S, T> {
         T d = top.first;
         S i = top.second;
         tree_node tn;
-
         bool result = _get_node_by_index(i, tn);
-
         q.pop();
 
         if (tn.leaf()) {
@@ -436,7 +434,6 @@ class AnnoyIndex : public AnnoyIndexInterface<S, T> {
       //check node type  
       tree_node tn;
       bool result = _get_node_by_index(node_index, tn);  
-      // printf("node_index, %d, node size %d \n", node_index, tn.items_size());
       if (!result)  {
         printf("ERROR: can not insert new item into node %d \n", node_index);
         return;
@@ -487,14 +484,8 @@ class AnnoyIndex : public AnnoyIndexInterface<S, T> {
         new_node.set_right(right_index);
         new_node.set_leaf(false);
         new_node.set_index(node_index);
-        // printf(" split %d node into left, and right... ", tn.index());
-        // printf(" left nodes : ");
-        // left_node.PrintDebugString();
-        // printf(" right nodes : ");
-        // right_node.PrintDebugString();   
         _update_tree_node(node_index, new_node);
-        _get_node_by_index(node_index, tn);
-        
+        _get_node_by_index(node_index, tn); 
       } 
 
 
