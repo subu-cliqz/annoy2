@@ -489,7 +489,8 @@ class AnnoyIndex : public AnnoyIndexInterface<S, T> {
       } 
 
 
-      bool side = D::side(tn, data, _f, _random);  
+      bool side = D::side(tn, data, _f, _random);
+      printf("SIDE: %d", side)  
       if (side) {
           _add_item_to_tree(tn.left(), data_id, data);   
       } else {
