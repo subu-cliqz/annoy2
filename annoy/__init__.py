@@ -15,7 +15,7 @@
 from .annoylib import *
 
 class AnnoyIndex(Annoy):
-    def __init__(self, f, K,file_dir, r,  max_reader, max_size,  read_only, metric='angular'):
+    def __init__(self, f, K, file_dir, r,  max_reader, max_size,  read_only, metric='angular'):
         """
         :param metric: 'angular' or 'euclidean'
         """
@@ -34,5 +34,17 @@ class AnnoyIndex(Annoy):
         return super(AnnoyIndex, self).add_item(i, self.check_list(vector))
 
     def get_nns_by_vector(self, vector, n, search_k=-1, include_distances=False):
-        # Same
+        # same
         return super(AnnoyIndex, self).get_nns_by_vector(self.check_list(vector), n, search_k, include_distances)
+
+    def get_nns_by_item(self, item, n, search_k=-1, include_distances=False):
+        # same
+        return super(AnnoyIndex, self).get_nns_by_item(item, n, search_k, include_distances)
+        
+    def get_n_items(self):
+        # same
+        return super(AnnoyIndex, self).get_n_items()
+        
+    def get_item(self, item):
+        # same
+        return super(AnnoyIndex, self).get_item_vector(item)

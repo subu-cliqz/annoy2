@@ -127,6 +127,7 @@ class AnnoyIndex : public AnnoyIndexInterface<S, T> {
         open_as_read(dir, maxreaders);
       } else {
         open_as_write(dir, maxreaders, maxsize);
+        create();
       }
       _read_only = (read_only == 1);
       
@@ -194,7 +195,7 @@ class AnnoyIndex : public AnnoyIndexInterface<S, T> {
         d.add_data(w[i]);
       }
       d.set_id(item);
-      
+
       add_item(item, d);
       return;
     }
@@ -248,10 +249,28 @@ class AnnoyIndex : public AnnoyIndexInterface<S, T> {
 
     void get_nns_by_item(S item, size_t n, size_t search_k, vector<S>* result, vector<T>* distances) {
       data_info d;
-      _get_raw_data(item, d);
+      vector<T> v;
+  
+     if (_verbose) {
+        printf("c++: get_nns_by_item %d, %d\n", n, search_k);
+      }
+          
+      E(mdb_txn_begin(_env, NULL, MDB_RDONLY, &_txn));
+      E(mdb_dbi_open(_txn, DBN_RAW, MDB_CREATE, &_dbi_raw));
       
-
-      return;
+      bool fetch_result = _get_raw_data(item, d);
+      
+      mdb_txn_abort(_txn);
+      
+      if (fetch_result) {
+        for (int i = 0; i < _f; i ++ ) {
+            v.push_back(d.data(i));
+        }
+      } else {
+        return;
+      }
+      
+      get_nns_by_vector(&v[0], n, search_k, result, distances);
     }
 
     void get_nns_by_vector(const T* w, size_t n, size_t search_k, 
@@ -295,7 +314,9 @@ class AnnoyIndex : public AnnoyIndexInterface<S, T> {
         T d = top.first;
         S i = top.second;
         tree_node tn;
+
         bool result = _get_node_by_index(i, tn);
+
         q.pop();
 
         if (tn.leaf()) {
@@ -320,10 +341,10 @@ class AnnoyIndex : public AnnoyIndexInterface<S, T> {
       for (size_t i = 0; i < nns.size(); i++) {
         if (_verbose) printf(" NN candidates %d : %d \n", i, nns[i]);
         S j = nns[i];
-  
+
         data_info di;
         bool r = _get_raw_data(j, di);
-
+    
         nns_dist.push_back(make_pair(D::distance(v, di,  _f), j));
       }
 
@@ -349,7 +370,7 @@ class AnnoyIndex : public AnnoyIndexInterface<S, T> {
       int max = _get_max_data_index();
       mdb_txn_abort(_txn);
 
-      return 0;
+      return max+1;
     }
     
     void verbose(bool v){
@@ -381,7 +402,7 @@ class AnnoyIndex : public AnnoyIndexInterface<S, T> {
       for (int i = 0; i < _tree_count; i ++ ) {
         _add_item_to_tree(i, data_id, d);
       }
-
+      
       mdb_txn_commit(_txn);
       return;
     }
@@ -412,21 +433,22 @@ class AnnoyIndex : public AnnoyIndexInterface<S, T> {
 
     }  
     void _add_item_to_tree(int node_index, int data_id, data_info& data) {
-      //check node type
+      //check node type  
       tree_node tn;
-      bool result = _get_node_by_index(node_index, tn);
+      bool result = _get_node_by_index(node_index, tn);  
+      // printf("node_index, %d, node size %d \n", node_index, tn.items_size());
       if (!result)  {
         printf("ERROR: can not insert new item into node %d \n", node_index);
         return;
       }
-
+      
       if (_verbose) {
-        printf("add item %d to tree node ... \n", data_id, node_index); fflush(stdout);
+        printf("add item %d to tree node %d... \n", data_id, node_index); fflush(stdout);
       }
-
+      
       if (tn.leaf() && tn.items_size() < _K) {
         tn.add_items(data_id);
-        _update_tree_node(node_index, tn);
+        _update_tree_node(node_index, tn);       
         if (_verbose) {
           printf("add item %d node %d directly\n ", data_id, node_index); fflush(stdout);
         }
@@ -435,13 +457,13 @@ class AnnoyIndex : public AnnoyIndexInterface<S, T> {
 
       if (tn.leaf() && tn.items_size() >= _K) {
         //split
-        vector<data_info> data_pt;
-        for (int k = 0; k < tn.items_size(); k ++) {
+        vector<data_info> data_pt;      
+        for (int k = 0; k < tn.items_size(); k ++) {         
           data_info d;
           _get_raw_data(tn.items(k), d);
           data_pt.push_back(d);
         }
-       
+        
 
         tree_node new_node;
         tree_node left_node;
@@ -464,13 +486,19 @@ class AnnoyIndex : public AnnoyIndexInterface<S, T> {
         new_node.set_left(left_index);
         new_node.set_right(right_index);
         new_node.set_leaf(false);
-        
+        new_node.set_index(node_index);
+        // printf(" split %d node into left, and right... ", tn.index());
+        // printf(" left nodes : ");
+        // left_node.PrintDebugString();
+        // printf(" right nodes : ");
+        // right_node.PrintDebugString();   
         _update_tree_node(node_index, new_node);
         _get_node_by_index(node_index, tn);
+        
       } 
 
 
-      bool side = D::side(tn, data, _f, _random);
+      bool side = D::side(tn, data, _f, _random);  
       if (side) {
           _add_item_to_tree(tn.left(), data_id, data);   
       } else {
@@ -593,7 +621,7 @@ class AnnoyIndex : public AnnoyIndexInterface<S, T> {
           printf("adding node %d : ", max_index + 1);
         }
         tn.set_index(max_index + 1);
-        bool result = _update_tree_node(max_index + 1, tn);
+        bool result = _update_tree_node(max_index + 1, tn);       
        //max_index = _get_max_tree_index();
         if (result)
           return max_index + 1;

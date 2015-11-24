@@ -41,7 +41,7 @@ class AngularIndexTest(TestCase):
         os.system("mkdir test_db")
         
         f = 2   
-        i = AnnoyIndex(f,  2, "test_db", 64,  1000, 3048576000)
+        i = AnnoyIndex(f,  2, "test_db", 64,  1000, 3048576000, 0)
         
         print "creating object"
         i.add_item(0, [0, 1])
@@ -55,7 +55,7 @@ class AngularIndexTest(TestCase):
         os.system("rm -rf test_db")
         os.system("mkdir test_db")
         f = 2
-        i = AnnoyIndex(f, 2, "test_db", 64,  1000, 3048576000)
+        i = AnnoyIndex(f, 2, "test_db", 64,  1000, 3048576000, 0)
         i.add_item(0, [1000, 0])
         i.add_item(1, [10, 0])
 
@@ -65,7 +65,7 @@ class AngularIndexTest(TestCase):
         os.system("rm -rf test_db")
         os.system("mkdir test_db")
         f = 2
-        i = AnnoyIndex(f, 2, "test_db", 64,  1000, 3048576000)
+        i = AnnoyIndex(f, 2, "test_db", 64,  1000, 3048576000, 0)
         i.add_item(0, [97, 0])
         i.add_item(1, [42, 42])
 
@@ -77,18 +77,18 @@ class AngularIndexTest(TestCase):
         os.system("rm -rf test_db")
         os.system("mkdir test_db")
         f = 2
-        i = AnnoyIndex(f, 2, "test_db", 64,  1000, 3048576000)
+        i = AnnoyIndex(f, 2, "test_db", 64,  1000, 3048576000, 0)
         
         i.add_item(0, [1, 0])
         i.add_item(1, [0, 0])
 
         self.assertAlmostEqual(i.get_distance(0, 1), 2.0)
-    def test_get_nns_by_vector(self):
+    def t1est_get_nns_by_vector(self):
         print "test_get_nns_by_vector "
         os.system("rm -rf test_db")
         os.system("mkdir test_db")
         f = 3
-        i = AnnoyIndex(f, 3, "test_db", 10, 1000, 3048576000)
+        i = AnnoyIndex(f, 3, "test_db", 10, 1000, 3048576000, 0)
         i.add_item(0, [0, 0, 1])
         i.add_item(1, [0, 1, 0])
         i.add_item(2, [1, 0, 0])
@@ -98,12 +98,12 @@ class AngularIndexTest(TestCase):
         self.assertEqual(i.get_nns_by_vector([1, 2, 3], 3), [0, 1, 2])
         self.assertEqual(i.get_nns_by_vector([2, 0, 1], 3), [2, 0, 1])
 
-    def t1est_get_nns_by_item(self):
+    def test_get_nns_by_item(self):
         print "test_get_nns_by_item "
         os.system("rm -rf test_db")
         os.system("mkdir test_db")
         f = 3
-        i = AnnoyIndex(f, 3, "test_db", 10, 1000, 3048576000)
+        i = AnnoyIndex(f, 3, "test_db", 10, 1000, 3048576000, 0)
         i.add_item(0, [2, 1, 0])
         i.add_item(1, [1, 2, 0])
         i.add_item(2, [0, 0, 1])
@@ -112,12 +112,13 @@ class AngularIndexTest(TestCase):
         self.assertEqual(i.get_nns_by_item(1, 3), [1, 0, 2])
         self.assertTrue(i.get_nns_by_item(2, 3) in [[2, 0, 1], [2, 1, 0]]) # could be either
 
-    def t1est_large_index(self):
+    def test_large_index(self):
+        print "test_large_index"
         os.system("rm -rf test_db")
         os.system("mkdir test_db")
         # Generate pairs of random points where the pair is super close
         f = 10
-        i = AnnoyIndex(f, 10, "test_db", 10,  1000, 3048576000)
+        i = AnnoyIndex(f, 10, "test_db", 1,  1000, 3048576000, 0)
         for j in xrange(0, 10000, 2):
             p = [random.gauss(0, 1) for z in xrange(f)]
             f1 = random.random() + 1
