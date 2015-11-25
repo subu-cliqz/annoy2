@@ -124,7 +124,7 @@ class AngularIndexTest(TestCase):
         for r in xrange(n_rounds):
             # create random points at distance x from (1000, 0, 0, ...)
             f = 10
-            i = AnnoyIndex(f, 'euclidean')
+            i = AnnoyIndex(f)
             for j in xrange(n_points):
                 p = [random.gauss(0, 1) for z in xrange(f - 1)]
                 norm = sum([pi ** 2 for pi in p]) ** 0.5

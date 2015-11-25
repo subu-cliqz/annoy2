@@ -326,20 +326,23 @@ class AnnoyIndex : public AnnoyIndexInterface<S, T> {
             }
           }
         } else {
-
           //T margin = D::margin(nd, v, _f);
           T margin = D::margin(tn, v, _f);
-          q.push(make_pair(std::min(d, +margin), tn.right()));
-          q.push(make_pair(std::min(d, -margin), tn.left()));
+          q.push(make_pair(std::min(d, +margin), tn.left()));
+          q.push(make_pair(std::min(d, -margin), tn.right()));
         }
       }
 
       // Get distances for all items
+      sort(nns.begin(), nns.end());
       vector<pair<T, S> > nns_dist;
+      S last = -1;
       for (size_t i = 0; i < nns.size(); i++) {
         if (_verbose) printf(" NN candidates %d : %d \n", i, nns[i]);
         S j = nns[i];
-
+        if (j == last)
+          continue;
+        last = j;
         data_info di;
         bool r = _get_raw_data(j, di);
     
@@ -355,7 +358,7 @@ class AnnoyIndex : public AnnoyIndexInterface<S, T> {
         }
         result->push_back(nns_dist[i].second);
         if (_verbose) {
-          printf("distance %d : -> %f\n", i,  nns_dist[i].first);
+          printf("Node %d, distance %d : -> %f\n", nns_dist[i].second, i, nns_dist[i].first);
         }
       }
 
@@ -488,13 +491,13 @@ class AnnoyIndex : public AnnoyIndexInterface<S, T> {
         _get_node_by_index(node_index, tn); 
       } 
 
-
+      //TODO: Add check to ensure that the hyperplane split the data.
       bool side = D::side(tn, data, _f, _random);
-      printf("SIDE: %d", side)  
+
       if (side) {
-          _add_item_to_tree(tn.left(), data_id, data);   
+          _add_item_to_tree(tn.left(), data_id, data);
       } else {
-          _add_item_to_tree(tn.right(), data_id, data);   
+          _add_item_to_tree(tn.right(), data_id, data);
       }
       return;
 

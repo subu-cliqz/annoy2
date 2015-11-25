@@ -99,6 +99,10 @@ inline void normalize(T* v, int f) {
     v[z] /= norm;
 }
 
+inline void normalize(tree_node& node, int f, float norm) {
+  for (int z = 0; z < f; z++)
+    node.set_v(z, node.v(z)/ norm);
+}
 
 template<typename S, typename T, class Random>
 struct Angular {
@@ -257,16 +261,14 @@ struct Angular {
     T i_norm = get_norm1(iv, f);
     T j_norm = get_norm1(jv, f);
     
-    
-    
-    T t = 0.0;
-    
+    float squared_sum = 0;
     for (int z = 0; z < f; z++) {
       T d = iv.data(z) / i_norm - jv.data(z) / j_norm;
       new_node.add_v(d);
-      t += - d * (iv.data(z) + jv.data(z)) / 2;
+      squared_sum += d*d;
     }
 
+    normalize(new_node, f, sqrt(squared_sum));
     new_node.set_t(0.0);
     new_node.set_leaf(false);
     left_node.set_leaf(true);
