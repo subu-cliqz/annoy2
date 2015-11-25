@@ -6,3 +6,4 @@ dist/
 MANIFEST
 *.py[cod]
 *.idea
+*.mdb
