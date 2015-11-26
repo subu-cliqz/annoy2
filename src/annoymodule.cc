@@ -290,12 +290,17 @@ py_an_add_item_batch(py_annoy *self, PyObject *args) {
   if (!PyArg_ParseTuple(args, "OO", &item, &l))
     return Py_None;
   
-  w = new float*[PyList_Size(l)];
-  for (int z = 0; z < PyList_Size(l); z++) {
-
-    PyObject *pf1 = PyList_GetItem(l,z);
-    w[z] = new float(PyList_Size(pf1));
-    for (int k = 0; k < PyList_Size(pf1); k++) {
+  int rows = PyList_Size(l);
+  int cols = 0;
+  w = new float*[rows];
+  for (int z = 0; z < rows; z++) {
+    PyObject *pf1 = PyList_GetItem(l,z);  
+   
+    if (cols == 0){
+      cols = PyList_Size(pf1);
+    }
+    w[z] = new float(cols);
+    for (int k = 0; k < cols; k++) {
       PyObject *pf2 = PyList_GetItem(pf1,k);
       w[z][k] = PyFloat_AsDouble(pf2);
     }
@@ -308,6 +313,10 @@ py_an_add_item_batch(py_annoy *self, PyObject *args) {
      
   self->ptr->add_item_batch(&e[0], e.size(), w);
 
+  for (int z = 0; z < rows; z++) {
+    delete [] w[z];
+  }
+  delete [] w;
   Py_RETURN_NONE;
 }
 

@@ -239,9 +239,6 @@ class AnnoyIndex : public AnnoyIndexInterface<S, T> {
     }
     
     T get_distance(S i, S j) {
-      printf("calculating distance of data %d and %d\n", i,j);
- 
-      
       E(mdb_txn_begin(_env, NULL, MDB_RDONLY, &_txn));
       E(mdb_dbi_open(_txn, DBN_RAW, MDB_CREATE, &_dbi_raw));
       
@@ -350,7 +347,7 @@ class AnnoyIndex : public AnnoyIndexInterface<S, T> {
           q.push(make_pair(std::min(d, -margin), tn.right()));
         }
       }
-
+      
       // Get distances for all items
       sort(nns.begin(), nns.end());
       vector<pair<T, S> > nns_dist;

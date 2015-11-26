@@ -43,13 +43,10 @@ class AngularIndexTest(TestCase):
         f = 2   
         i = AnnoyIndex(f,  2, "test_db", 64,  1000, 3048576000, 0)
         
-        print "creating object"
         i.add_item(0, [0, 1])
         i.add_item(1, [1, 1])
 
-        print "creating object"
         self.assertAlmostEqual(i.get_distance(0, 1), 2 * (1.0 - 2 ** -0.5))
-        print "done"
 
     def test_dist_2(self):
         os.system("rm -rf test_db")
@@ -124,7 +121,7 @@ class AngularIndexTest(TestCase):
         self.assertEqual(i.get_nns_by_item(1, 3), [1, 0, 2])
         self.assertTrue(i.get_nns_by_item(2, 3) in [[2, 0, 1], [2, 1, 0]]) # could be either
 
-    def t1est_large_index(self):
+    def test_large_index(self):
         print "test_large_index"
         os.system("rm -rf test_db")
         os.system("mkdir test_db")
@@ -166,7 +163,7 @@ class AngularIndexTest(TestCase):
 
         return 1.0 * found / (n * n_rounds)
 
-    def t1est_precision_1(self):
+    def test_precision_1(self):
         print "test_precision_1"
         res = self.precision(1)
         print res
