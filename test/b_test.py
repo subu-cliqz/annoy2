@@ -121,7 +121,7 @@ class AngularIndexTest(TestCase):
         self.assertEqual(i.get_nns_by_item(1, 3), [1, 0, 2])
         self.assertTrue(i.get_nns_by_item(2, 3) in [[2, 0, 1], [2, 1, 0]]) # could be either
 
-    def test_large_index(self):
+    def t1est_large_index(self):
         print "test_large_index"
         os.system("rm -rf test_db")
         os.system("mkdir test_db")
@@ -137,6 +137,33 @@ class AngularIndexTest(TestCase):
             i.add_item(j, x)
             i.add_item(j+1, y)
         
+        i = AnnoyIndex(f, 12, "test_db", 1,  1000, 3048576000, 1)
+        for j in xrange(0, 10000, 2):
+            self.assertEqual(i.get_nns_by_item(j, 2, 50), [j, j+1])
+            self.assertEqual(i.get_nns_by_item(j+1, 2, 50), [j+1, j])
+            
+    def test_large_index_batch(self):
+        print "test_large_index_batch"
+        os.system("rm -rf test_db")
+        os.system("mkdir test_db")
+        # Generate pairs of random points where the pair is super close
+        f = 10
+        i = AnnoyIndex(f, 12, "test_db", 1,  1000, 3048576000, 0)
+        i_v = []
+        v_v = []
+        for j in xrange(0, 10000, 2):
+            p = [random.gauss(0, 1) for z in xrange(f)]
+            f1 = random.random() + 1
+            f2 = random.random() + 1
+            x = [f1 * pi + random.gauss(0, 1e-2) for pi in p]
+            y = [f2 * pi + random.gauss(0, 1e-2) for pi in p]
+            i_v.append(j)
+            i_v.append(j+1)
+            v_v.append(x)
+            v_v.append(y)
+        
+        i.add_item_batch(i_v, v_v)
+
         i = AnnoyIndex(f, 12, "test_db", 1,  1000, 3048576000, 1)
         for j in xrange(0, 10000, 2):
             self.assertEqual(i.get_nns_by_item(j, 2, 50), [j, j+1])
@@ -163,7 +190,7 @@ class AngularIndexTest(TestCase):
 
         return 1.0 * found / (n * n_rounds)
 
-    def test_precision_1(self):
+    def t1est_precision_1(self):
         print "test_precision_1"
         res = self.precision(1)
         print res
