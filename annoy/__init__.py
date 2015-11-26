@@ -20,18 +20,23 @@ class AnnoyIndex(Annoy):
         :param metric: 'angular' or 'euclidean'
         """
         self.f = f
+        
         super(AnnoyIndex, self).__init__(f, K, file_dir, r, max_reader, max_size, read_only, metric)
 
     def check_list(self, vector):
         if type(vector) != list:
             vector = list(vector)
-        if len(vector) != self.f:
-            raise IndexError('Vector must be of length %d' % self.f)
+        # if len(vector) != self.f:
+        #     raise IndexError('Vector must be of length %d' % self.f)
         return vector
 
     def add_item(self, i, vector):
         # Wrapper to convert inputs to list
         return super(AnnoyIndex, self).add_item(i, self.check_list(vector))
+ 
+    def add_item_batch(self, item_vector, vectors_vector):
+        # Wrapper to convert inputs to list
+        return super(AnnoyIndex, self).add_item_batch(self.check_list(item_vector), self.check_list(vectors_vector))
 
     def get_nns_by_vector(self, vector, n, search_k=-1, include_distances=False):
         # same

@@ -65,6 +65,7 @@ class AnnoyIndexInterface {
 public:
   virtual ~AnnoyIndexInterface() {};
   virtual void add_item(S item, const T* w) = 0;
+  virtual void add_item_batch(S* items, size_t items_len, T** w) = 0;
   virtual void build(int q) = 0;
   virtual bool save(const char* filename) = 0;
   virtual void reinitialize() = 0;
@@ -199,6 +200,23 @@ class AnnoyIndex : public AnnoyIndexInterface<S, T> {
       add_item(item, d);
       return;
     }
+  
+    void add_item_batch(S* items, size_t items_len, T** w){
+   
+    vector<data_info> d;
+    for (int i = 0; i < items_len; i ++) {
+      data_info tmp;
+      
+      for(int j = 0; j < _f; j ++ )
+        tmp.add_data(w[i][j]);    
+        
+      tmp.set_id(items[i]);
+      d.push_back(tmp);
+    }
+
+    add_item_batch(items, items_len, &d[0]);
+    return;
+  }
   
     void build(int q) {
       return;
@@ -402,13 +420,30 @@ class AnnoyIndex : public AnnoyIndexInterface<S, T> {
       _add_raw_data(data_id, d);
       for (int i = 0; i < _tree_count; i ++ ) {
         _add_item_to_tree(i, data_id, d);
-      }
+      }     
+      mdb_txn_commit(_txn);
+      return;
+    }
+    
+        
+    void add_item_batch(S* items, size_t items_len, data_info* d) {
+
+      E(mdb_txn_begin(_env, NULL, 0, &_txn));
+      E(mdb_dbi_open(_txn, DBN_RAW, MDB_CREATE | MDB_INTEGERKEY, &_dbi_raw));
+      E(mdb_dbi_open(_txn, DBN_TREE, MDB_CREATE | MDB_INTEGERKEY, &_dbi_tree));
       
+      for(int i = 0; i < items_len; i++) {
+        d[i].set_id(items[i]);
+        _add_raw_data(items[i], d[i]);
+        for (int j = 0; j < _tree_count; j ++ ) {
+          _add_item_to_tree(j, items[i], d[i]);
+        }
+      }
       mdb_txn_commit(_txn);
       return;
     }
 
-
+    
     //for debug
 
     void display_node(S node_index) {

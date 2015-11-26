@@ -112,8 +112,19 @@ class AngularIndexTest(TestCase):
         self.assertEqual(i.get_nns_by_item(1, 3), [1, 0, 2])
         self.assertTrue(i.get_nns_by_item(2, 3) in [[2, 0, 1], [2, 1, 0]]) # could be either
 
+    def test_get_nns_by_item_batch(self):
+        print "test_get_nns_by_item_batch "
+        os.system("rm -rf test_db")
+        os.system("mkdir test_db")
+        f = 3
+        i = AnnoyIndex(f, 3, "test_db", 10, 1000, 3048576000, 0)
+        i.add_item_batch([0,1,2], [[2, 1, 0], [1, 2, 0], [0, 0, 1]])
+       
+        self.assertEqual(i.get_nns_by_item(0, 3), [0, 1, 2])
+        self.assertEqual(i.get_nns_by_item(1, 3), [1, 0, 2])
+        self.assertTrue(i.get_nns_by_item(2, 3) in [[2, 0, 1], [2, 1, 0]]) # could be either
 
-    def test_large_index(self):
+    def t1est_large_index(self):
         print "test_large_index"
         os.system("rm -rf test_db")
         os.system("mkdir test_db")
@@ -155,31 +166,31 @@ class AngularIndexTest(TestCase):
 
         return 1.0 * found / (n * n_rounds)
 
-    def test_precision_1(self):
+    def t1est_precision_1(self):
         print "test_precision_1"
         res = self.precision(1)
         print res
         self.assertTrue(res >= 0.98)
 
-    def test_precision_10(self):
+    def t1est_precision_10(self):
         print "test_precision_10"
         res = self.precision(10)
         print res
         self.assertTrue(res >= 0.98)
 
-    def test_precision_100(self):
+    def t1est_precision_100(self):
         print "test_precision_100"
         res = self.precision(100)
         print res
         self.assertTrue(res >= 0.98)
 
-    def test_precision_1000(self):
+    def t1est_precision_1000(self):
         print "test_precision_1000"    
         res = self.precision(1000)
         print res
         self.assertTrue(res >= 0.98)
         
-    def test_precision_10000(self):
+    def t1est_precision_10000(self):
         print "test_precision_1000"    
         res = self.precision(10000)
         print res

@@ -279,6 +279,39 @@ py_an_add_item(py_annoy *self, PyObject *args) {
 }
 
 
+static PyObject* 
+py_an_add_item_batch(py_annoy *self, PyObject *args) {
+  float **w;
+  vector<int32_t> e;
+  PyObject* l;
+  PyObject* item;
+  if (!self->ptr) 
+    return Py_None;
+  if (!PyArg_ParseTuple(args, "OO", &item, &l))
+    return Py_None;
+  
+  w = new float*[PyList_Size(l)];
+  for (int z = 0; z < PyList_Size(l); z++) {
+
+    PyObject *pf1 = PyList_GetItem(l,z);
+    w[z] = new float(PyList_Size(pf1));
+    for (int k = 0; k < PyList_Size(pf1); k++) {
+      PyObject *pf2 = PyList_GetItem(pf1,k);
+      w[z][k] = PyFloat_AsDouble(pf2);
+    }
+  }
+ 
+   for (int z = 0; z < PyList_Size(item); z++) {
+    PyObject *pf = PyList_GetItem(item,z);
+    e.push_back(PyInt_AsLong(pf));
+    }
+     
+  self->ptr->add_item_batch(&e[0], e.size(), w);
+
+  Py_RETURN_NONE;
+}
+
+
 static PyObject *
 py_an_build(py_annoy *self, PyObject *args) {
   int q;
@@ -355,6 +388,7 @@ static PyMethodDef AnnoyMethods[] = {
   {"get_nns_by_vector",(PyCFunction)py_an_get_nns_by_vector, METH_VARARGS, ""},
   {"get_item_vector",(PyCFunction)py_an_get_item_vector, METH_VARARGS, ""},
   {"add_item",(PyCFunction)py_an_add_item, METH_VARARGS, ""},
+  {"add_item_batch",(PyCFunction)py_an_add_item_batch, METH_VARARGS, ""},
   {"build",(PyCFunction)py_an_build, METH_VARARGS, ""},
   {"unload",(PyCFunction)py_an_unload, METH_VARARGS, ""},
   {"create",(PyCFunction)py_an_create, METH_VARARGS, ""},

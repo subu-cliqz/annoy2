@@ -139,11 +139,11 @@ static void MergeFromFail(int line) {
 
 // ===================================================================
 
-#ifndef _MSC_VER
+#if !defined(_MSC_VER) || _MSC_VER >= 1900
 const int data_info::kDataFieldNumber;
 const int data_info::kIdFieldNumber;
 const int data_info::kCategoryFieldNumber;
-#endif  // !_MSC_VER
+#endif  // !defined(_MSC_VER) || _MSC_VER >= 1900
 
 data_info::data_info()
   : ::google::protobuf::Message(), _internal_metadata_(NULL) {
@@ -564,7 +564,7 @@ void data_info::clear_category() {
 
 // ===================================================================
 
-#ifndef _MSC_VER
+#if !defined(_MSC_VER) || _MSC_VER >= 1900
 const int tree_node::kIndexFieldNumber;
 const int tree_node::kLeafFieldNumber;
 const int tree_node::kLeftFieldNumber;
@@ -572,7 +572,7 @@ const int tree_node::kRightFieldNumber;
 const int tree_node::kItemsFieldNumber;
 const int tree_node::kVFieldNumber;
 const int tree_node::kTFieldNumber;
-#endif  // !_MSC_VER
+#endif  // !defined(_MSC_VER) || _MSC_VER >= 1900
 
 tree_node::tree_node()
   : ::google::protobuf::Message(), _internal_metadata_(NULL) {
