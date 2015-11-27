@@ -8,6 +8,7 @@
 #include <math.h>
 #include <stdlib.h>
 #include <memory.h>
+#include <thread>
 
 #include <sys/stat.h> 
 #include <fcntl.h>
@@ -415,9 +416,19 @@ class AnnoyIndex : public AnnoyIndexInterface<S, T> {
       E(mdb_dbi_open(_txn, DBN_TREE, MDB_CREATE | MDB_INTEGERKEY, &_dbi_tree));
       d.set_id(data_id);
       _add_raw_data(data_id, d);
-      for (int i = 0; i < _tree_count; i ++ ) {
-        _add_item_to_tree(i, data_id, d);
-      }     
+      
+      //TODO: Implement some sort of thread pooling here.
+      vector<thread> t;
+      int concurrency = thread::hardware_concurrency();
+      for (int i = 0; i < _tree_count; i += concurrency) {
+        for(int j = i; j < std::min(_tree_count, concurrency); j++) {
+          t.push_back(thread(&AnnoyIndex::_add_item_to_tree, this, j, data_id, std::ref(d)));
+          if(t[j].joinable()) {
+            t[j].join();
+          }
+        }
+      }
+       
       mdb_txn_commit(_txn);
       return;
     }
@@ -432,9 +443,18 @@ class AnnoyIndex : public AnnoyIndexInterface<S, T> {
       for(int i = 0; i < items_len; i++) {
         d[i].set_id(items[i]);
         _add_raw_data(items[i], d[i]);
-        for (int j = 0; j < _tree_count; j ++ ) {
-          _add_item_to_tree(j, items[i], d[i]);
-        }
+ 
+       //TODO: Implement some sort of thread pooling here.       
+        vector<thread> t;
+        int concurrency = thread::hardware_concurrency();
+        for (int j = 0; j < _tree_count; j += concurrency) {
+          for(int k = j; k < std::min(_tree_count, concurrency); k++) {
+            t.push_back(thread(&AnnoyIndex::_add_item_to_tree, this, k, items[i], std::ref(d[i])));
+            if(t[k].joinable()) {
+              t[k].join();
+            }
+          }
+        }   
       }
       mdb_txn_commit(_txn);
       return;
@@ -480,7 +500,7 @@ class AnnoyIndex : public AnnoyIndexInterface<S, T> {
       
       if (tn.leaf() && tn.items_size() < _K) {
         tn.add_items(data_id);
-        _update_tree_node(node_index, tn);       
+        _update_tree_node(node_index, tn); 
         if (_verbose) {
           printf("add item %d node %d directly\n ", data_id, node_index); fflush(stdout);
         }
@@ -674,10 +694,10 @@ class AnnoyIndex : public AnnoyIndexInterface<S, T> {
         
         
         if (retval == MDB_SUCCESS) {
-            /*
-             printf("successful to put %d, %d : key: %p %.*s, data: %p %.*s, due to : %s\n",
-             (int) key.mv_size, (int) data.mv_size, key.mv_data,  (int) key.mv_size,  (char *) key.mv_data,
-             data.mv_data, (int) data.mv_size, (char *) data.mv_data, mdb_strerror(retval));
+            /*         
+            printf("successful to put %d, %d : key: %p %.*s, data: %p %.*s, due to : %s\n",
+            (int) key.mv_size, (int) data.mv_size, key.mv_data,  (int) key.mv_size,  (char *) key.mv_data,
+            data.mv_data, (int) data.mv_size, (char *) data.mv_data, mdb_strerror(retval));
              */
             if (_verbose) {
               if (tn.leaf())
@@ -685,7 +705,7 @@ class AnnoyIndex : public AnnoyIndexInterface<S, T> {
               else 
                 printf(" update tree non-leaf node  %d successfully . \n", index);
             }
-
+            
             success = 1;
         }
         else if (retval == MDB_KEYEXIST) {
@@ -715,7 +735,7 @@ class AnnoyIndex : public AnnoyIndexInterface<S, T> {
             string s_data((char*) data.mv_data, data.mv_size);
             tn.ParseFromString(s_data);
         } else {
-            //printf("can not find raw image data with id: %d\n", image_id);
+            //printf("can not find raw image data with id: %d\n", index);
             return false;
         }
         return true;

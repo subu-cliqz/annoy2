@@ -42,7 +42,7 @@ class AngularIndexTest(TestCase):
         
         f = 2   
         i = AnnoyIndex(f,  2, "test_db", 64,  1000, 3048576000, 0)
-        
+        i.verbose(True)
         i.add_item(0, [0, 1])
         i.add_item(1, [1, 1])
 
@@ -121,13 +121,13 @@ class AngularIndexTest(TestCase):
         self.assertEqual(i.get_nns_by_item(1, 3), [1, 0, 2])
         self.assertTrue(i.get_nns_by_item(2, 3) in [[2, 0, 1], [2, 1, 0]]) # could be either
 
-    def t1est_large_index(self):
+    def test_large_index(self):
         print "test_large_index"
         os.system("rm -rf test_db")
         os.system("mkdir test_db")
         # Generate pairs of random points where the pair is super close
         f = 10
-        i = AnnoyIndex(f, 12, "test_db", 1,  1000, 3048576000, 0)
+        i = AnnoyIndex(f, 12, "test_db", 10,  1000, 3048576000, 0)
         for j in xrange(0, 10000, 2):
             p = [random.gauss(0, 1) for z in xrange(f)]
             f1 = random.random() + 1
@@ -137,7 +137,7 @@ class AngularIndexTest(TestCase):
             i.add_item(j, x)
             i.add_item(j+1, y)
         
-        i = AnnoyIndex(f, 12, "test_db", 1,  1000, 3048576000, 1)
+        i = AnnoyIndex(f, 12, "test_db", 10,  1000, 3048576000, 1)
         for j in xrange(0, 10000, 2):
             self.assertEqual(i.get_nns_by_item(j, 2, 50), [j, j+1])
             self.assertEqual(i.get_nns_by_item(j+1, 2, 50), [j+1, j])
@@ -190,31 +190,31 @@ class AngularIndexTest(TestCase):
 
         return 1.0 * found / (n * n_rounds)
 
-    def t1est_precision_1(self):
+    def test_precision_1(self):
         print "test_precision_1"
         res = self.precision(1)
         print res
         self.assertTrue(res >= 0.98)
 
-    def t1est_precision_10(self):
+    def test_precision_10(self):
         print "test_precision_10"
         res = self.precision(10)
         print res
         self.assertTrue(res >= 0.98)
 
-    def t1est_precision_100(self):
+    def test_precision_100(self):
         print "test_precision_100"
         res = self.precision(100)
         print res
         self.assertTrue(res >= 0.98)
 
-    def t1est_precision_1000(self):
+    def test_precision_1000(self):
         print "test_precision_1000"    
         res = self.precision(1000)
         print res
         self.assertTrue(res >= 0.98)
         
-    def t1est_precision_10000(self):
+    def test_precision_10000(self):
         print "test_precision_1000"    
         res = self.precision(10000)
         print res

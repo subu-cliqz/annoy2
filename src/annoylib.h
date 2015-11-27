@@ -61,6 +61,8 @@ using std::string;
 using std::pair;
 using std::numeric_limits;
 using std::make_pair;
+using std::thread;
+using std::min;
 
 struct RandRandom {
   // Default implementation of annoy-specific random number generator that uses rand() from standard library.

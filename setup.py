@@ -44,7 +44,7 @@ setup(name='annoy',
             'annoy.annoylib', ['src/annoymodule.cc',  'src/protobuf/annoy.pb.cc'],
             depends=['src/annoylib.h', 'src/lmdbforest.h', 'src/protobuf/annoy.pb.h'],
             include_dirs=['src', '/usr/loca/include', '/opt/local/include', '/usr/local/Cellar/protobuf/2.6.0/include/'],
-            extra_compile_args=['-O3', '-march=native', '-ffast-math'],
+            extra_compile_args=['-O3', '-march=native', '-stdlib=libc++', '-std=c++11', '-ffast-math'],
             libraries = ["lmdb", "protobuf"]
         )
       ],
