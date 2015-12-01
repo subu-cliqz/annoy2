@@ -40,7 +40,7 @@
 
 #define DBN_ROOT "root"
 #define DBN_RAW "raw"
-#define DBN_TREE "tree"
+#define DBN_TREE(index) "tree" #index
 
 
 using namespace std;
@@ -99,7 +99,7 @@ class AnnoyIndex : public AnnoyIndexInterface<S, T> {
   protected:
     MDB_env* _env;
     MDB_dbi _dbi_raw;
-    MDB_dbi _dbi_tree;
+    MDB_dbi* _dbi_tree;
     MDB_txn* _txn;
   
     int _f ; // the dimension of data
@@ -125,6 +125,7 @@ class AnnoyIndex : public AnnoyIndexInterface<S, T> {
       _env = NULL;
       _txn = NULL;
 
+      _dbi_tree = new MDB_dbi[_tree_count]();
       if (read_only == 1) {
         open_as_read(dir, maxreaders);
       } else {
@@ -136,6 +137,7 @@ class AnnoyIndex : public AnnoyIndexInterface<S, T> {
     }
     
     ~AnnoyIndex(){
+      delete [] _dbi_tree;
     }
 
     bool open_as_read(const char* database_directory, int maxreaders) {
@@ -298,7 +300,9 @@ class AnnoyIndex : public AnnoyIndexInterface<S, T> {
 
       E(mdb_txn_begin(_env, NULL, MDB_RDONLY, &_txn));
       E(mdb_dbi_open(_txn, DBN_RAW, MDB_INTEGERKEY, &_dbi_raw));
-      E(mdb_dbi_open(_txn, DBN_TREE, MDB_INTEGERKEY, &_dbi_tree));
+      for (int i = 0; i < _tree_count; i++){
+        E(mdb_dbi_open(_txn, DBN_TREE(i), MDB_INTEGERKEY, &_dbi_tree[i]));
+      }
 
       _get_all_nns(w, n, search_k, result, distances);
       mdb_txn_abort(_txn);
@@ -308,7 +312,7 @@ class AnnoyIndex : public AnnoyIndexInterface<S, T> {
 
     void _get_all_nns(const T* v, size_t n, size_t search_k, vector<S>* result, vector<T>* distances) {
       
-      std::priority_queue<pair<T, S> > q;
+      std::priority_queue<pair<T, pair<S,S> > > q;
 
 
       std::map<S, bool> r;
@@ -321,16 +325,17 @@ class AnnoyIndex : public AnnoyIndexInterface<S, T> {
 
       //put all root nodes in priority queue
       for (size_t i = 0; i < _tree_count; i++) {
-        q.push(make_pair(numeric_limits<T>::infinity(), _roots[i]));
+        q.push(make_pair(numeric_limits<T>::infinity(), make_pair(i, _roots[i])));
       }
     
       vector<S> nns;
       while (nns.size() < search_k && !q.empty()) {
-        const pair<T, S>& top = q.top();
+        const pair<T, pair<S,S> >& top = q.top();
         T d = top.first;
-        S i = top.second;
+        S i = top.second.second;
+        S tree_index = top.second.first;
         tree_node tn;
-        bool result = _get_node_by_index(i, tn);
+        bool result = _get_node_by_index(tree_index, i, tn);
         q.pop();
 
         if (tn.leaf()) {
@@ -344,8 +349,8 @@ class AnnoyIndex : public AnnoyIndexInterface<S, T> {
         } else {
           //T margin = D::margin(nd, v, _f);
           T margin = D::margin(tn, v, _f);
-          q.push(make_pair(std::min(d, +margin), tn.left()));
-          q.push(make_pair(std::min(d, -margin), tn.right()));
+          q.push(make_pair(std::min(d, +margin), make_pair(tree_index, tn.left())));
+          q.push(make_pair(std::min(d, -margin), make_pair(tree_index, tn.right())));
         }
       }
       
@@ -413,7 +418,10 @@ class AnnoyIndex : public AnnoyIndexInterface<S, T> {
 
       E(mdb_txn_begin(_env, NULL, 0, &_txn));
       E(mdb_dbi_open(_txn, DBN_RAW, MDB_CREATE | MDB_INTEGERKEY, &_dbi_raw));
-      E(mdb_dbi_open(_txn, DBN_TREE, MDB_CREATE | MDB_INTEGERKEY, &_dbi_tree));
+      
+      for(int i = 0; i < _tree_count; i++) {
+        E(mdb_dbi_open(_txn, DBN_TREE(i), MDB_CREATE | MDB_INTEGERKEY, &_dbi_tree[i]));
+      }
       d.set_id(data_id);
       _add_raw_data(data_id, d);
       
@@ -422,7 +430,7 @@ class AnnoyIndex : public AnnoyIndexInterface<S, T> {
       int concurrency = thread::hardware_concurrency();
       for (int i = 0; i < _tree_count; i += concurrency) {
         for(int j = i; j < std::min(_tree_count, concurrency); j++) {
-          t.push_back(thread(&AnnoyIndex::_add_item_to_tree, this, j, data_id, std::ref(d))); 
+          t.push_back(thread(&AnnoyIndex::_add_item_to_tree, this, j, 0, data_id, std::ref(d))); 
           if(t[j].joinable()) {
             t[j].join();
           }
@@ -438,24 +446,26 @@ class AnnoyIndex : public AnnoyIndexInterface<S, T> {
 
       E(mdb_txn_begin(_env, NULL, 0, &_txn));
       E(mdb_dbi_open(_txn, DBN_RAW, MDB_CREATE | MDB_INTEGERKEY, &_dbi_raw));
-      E(mdb_dbi_open(_txn, DBN_TREE, MDB_CREATE | MDB_INTEGERKEY, &_dbi_tree));
+      for(int i = 0; i < _tree_count; i++) {
+        E(mdb_dbi_open(_txn, DBN_TREE(i), MDB_CREATE | MDB_INTEGERKEY, &_dbi_tree[i]));
+      }
       
       for(int i = 0; i < items_len; i++) {
         d[i].set_id(items[i]);
         _add_raw_data(items[i], d[i]);
- 
+
        //TODO: Implement some sort of thread pooling here.       
         vector<thread> t;
         int concurrency = thread::hardware_concurrency();
         for (int j = 0; j < _tree_count; j += concurrency) {
           for(int k = j; k < std::min(_tree_count, concurrency); k++) {
-            t.push_back(thread(&AnnoyIndex::_add_item_to_tree, this, k, items[i], std::ref(d[i])));
+            t.push_back(thread(&AnnoyIndex::_add_item_to_tree, this, k, 0, items[i], std::ref(d[i])));
             if(t[k].joinable()) {
               t[k].join();
             }
           }
-        }   
-      }
+        }  
+      } 
       mdb_txn_commit(_txn);
       return;
     }
@@ -465,30 +475,32 @@ class AnnoyIndex : public AnnoyIndexInterface<S, T> {
 
     void display_node(S node_index) {
     
-      E(mdb_txn_begin(_env, NULL, 0, &_txn));
-      E(mdb_dbi_open(_txn, DBN_TREE, MDB_INTEGERKEY, &_dbi_tree));
+      // E(mdb_txn_begin(_env, NULL, 0, &_txn));
+      // for (int i = 0; i < _tree_count; i++){
+      //   E(mdb_dbi_open(_txn, DBN_TREE(i), MDB_INTEGERKEY, &_dbi_tree[i]));
+      // }
       
-      tree_node tn;
-      _get_node_by_index(node_index, tn);
-      tn.PrintDebugString();
-      mdb_txn_abort(_txn);
+      // tree_node tn;
+      // _get_node_by_index(node_index, tn);
+      // tn.PrintDebugString();
+      // mdb_txn_abort(_txn);
 
     }
     void display_raw(S data_index) {
     
-      E(mdb_txn_begin(_env, NULL, 0, &_txn));
-      E(mdb_dbi_open(_txn, DBN_RAW, MDB_INTEGERKEY, &_dbi_raw));
+      // E(mdb_txn_begin(_env, NULL, 0, &_txn));
+      // E(mdb_dbi_open(_txn, DBN_RAW, MDB_INTEGERKEY, &_dbi_raw));
       
-      data_info di;
-      _get_raw_data(data_index, di);
-      di.PrintDebugString();
-      mdb_txn_abort(_txn);
+      // data_info di;
+      // _get_raw_data(data_index, di);
+      // di.PrintDebugString();
+      // mdb_txn_abort(_txn);
 
     }  
-    void _add_item_to_tree(int node_index, int data_id, data_info& data) {
+    void _add_item_to_tree(int tree_index, int node_index, int data_id, data_info& data) {
       //check node type  
       tree_node tn;
-      bool result = _get_node_by_index(node_index, tn);  
+      bool result = _get_node_by_index(tree_index, node_index, tn);  
       if (!result)  {
         printf("ERROR: can not insert new item into node %d \n", node_index);
         return;
@@ -500,7 +512,7 @@ class AnnoyIndex : public AnnoyIndexInterface<S, T> {
       
       if (tn.leaf() && tn.items_size() < _K) {
         tn.add_items(data_id);
-        _update_tree_node(node_index, tn); 
+        _update_tree_node(tree_index, node_index, tn); 
         if (_verbose) {
           printf("add item %d node %d directly\n ", data_id, node_index); fflush(stdout);
         }
@@ -533,23 +545,23 @@ class AnnoyIndex : public AnnoyIndexInterface<S, T> {
         }
          
 
-        int left_index = _add_node(left_node);
-        int right_index = _add_node(right_node);
+        int left_index = _add_node(tree_index, left_node);
+        int right_index = _add_node(tree_index, right_node);
         new_node.set_left(left_index);
         new_node.set_right(right_index);
         new_node.set_leaf(false);
         new_node.set_index(node_index);
-        _update_tree_node(node_index, new_node);
-        _get_node_by_index(node_index, tn); 
+        _update_tree_node(tree_index, node_index, new_node);
+        _get_node_by_index(tree_index, node_index, tn); 
       } 
 
       //TODO: Add check to ensure that the hyperplane split the data.
       bool side = D::side(tn, data, _f, _random);
 
       if (side) {
-          _add_item_to_tree(tn.left(), data_id, data);
+          _add_item_to_tree(tree_index, tn.left(), data_id, data);
       } else {
-          _add_item_to_tree(tn.right(), data_id, data);
+          _add_item_to_tree(tree_index, tn.right(), data_id, data);
       }
       return;
 
@@ -569,9 +581,9 @@ class AnnoyIndex : public AnnoyIndexInterface<S, T> {
       
 
       E(mdb_txn_begin(_env, NULL, 0 , &txn));
-      MDB_dbi dbi_tree;
-      E(mdb_dbi_open(txn, DBN_TREE, MDB_CREATE | MDB_INTEGERKEY, &dbi_tree));
       for (int i = 0; i < _tree_count; i ++) {
+        MDB_dbi dbi_tree;
+        E(mdb_dbi_open(txn, DBN_TREE(i), MDB_CREATE | MDB_INTEGERKEY, &dbi_tree));
         key.mv_data = (uint8_t*) & i;
         key.mv_size = sizeof(int);
         tree_node tn;
@@ -609,13 +621,13 @@ class AnnoyIndex : public AnnoyIndexInterface<S, T> {
     }
   
   
-    int _get_max_tree_index() {
+    int _get_max_tree_index(int tree_index) {
       
         MDB_val key, data;
         MDB_cursor *cursor;
         
         
-        E(mdb_cursor_open(_txn, _dbi_tree, &cursor));
+        E(mdb_cursor_open(_txn, _dbi_tree[tree_index], &cursor));
         rc = mdb_cursor_get(cursor, &key, &data, MDB_LAST);
 
         int index_last = 0;
@@ -659,16 +671,16 @@ class AnnoyIndex : public AnnoyIndexInterface<S, T> {
     }
     
     
-    int _add_node(tree_node & tn) {
+    int _add_node(int tree_index, tree_node & tn) {
         
         //get the largest index
-        int max_index = _get_max_tree_index();
+        int max_index = _get_max_tree_index(tree_index);
 
         if (_verbose) {
           printf("adding node %d : ", max_index + 1);
         }
         tn.set_index(max_index + 1);
-        bool result = _update_tree_node(max_index + 1, tn);       
+        bool result = _update_tree_node(tree_index, max_index + 1, tn);       
        //max_index = _get_max_tree_index();
         if (result)
           return max_index + 1;
@@ -676,7 +688,7 @@ class AnnoyIndex : public AnnoyIndexInterface<S, T> {
         
     }
     
-    bool _update_tree_node(int index, tree_node & tn) {
+    bool _update_tree_node(int tree_index, int index, tree_node & tn) {
         int success = 0;
         MDB_val key, data;
         
@@ -690,7 +702,7 @@ class AnnoyIndex : public AnnoyIndexInterface<S, T> {
         data.mv_data = (uint8_t*)data_buffer.c_str();
 
         
-        int retval = mdb_put(_txn, _dbi_tree, &key, &data, 0);
+        int retval = mdb_put(_txn, _dbi_tree[tree_index], &key, &data, 0);
         
         
         if (retval == MDB_SUCCESS) {
@@ -725,12 +737,12 @@ class AnnoyIndex : public AnnoyIndexInterface<S, T> {
 
     }
     
-    bool _get_node_by_index(int index,  tree_node & tn ) {
+    bool _get_node_by_index(int tree_index, int index,  tree_node & tn ) {
         
         MDB_val key, data;
         key.mv_data = (uint8_t*) & index;
         key.mv_size = sizeof(int);
-        rc = mdb_get(_txn, _dbi_tree, &key, &data);
+        rc = mdb_get(_txn, _dbi_tree[tree_index], &key, &data);
         if (rc == 0) {
             string s_data((char*) data.mv_data, data.mv_size);
             tn.ParseFromString(s_data);
