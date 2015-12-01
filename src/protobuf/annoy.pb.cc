@@ -35,10 +35,9 @@ void protobuf_AssignDesc_protobuf_2fannoy_2eproto() {
       "protobuf/annoy.proto");
   GOOGLE_CHECK(file != NULL);
   data_info_descriptor_ = file->message_type(0);
-  static const int data_info_offsets_[3] = {
+  static const int data_info_offsets_[2] = {
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(data_info, data_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(data_info, id_),
-    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(data_info, category_),
   };
   data_info_reflection_ =
     ::google::protobuf::internal::GeneratedMessageReflection::NewGeneratedMessageReflection(
@@ -52,14 +51,13 @@ void protobuf_AssignDesc_protobuf_2fannoy_2eproto() {
       GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(data_info, _internal_metadata_),
       -1);
   tree_node_descriptor_ = file->message_type(1);
-  static const int tree_node_offsets_[7] = {
+  static const int tree_node_offsets_[6] = {
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(tree_node, index_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(tree_node, leaf_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(tree_node, left_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(tree_node, right_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(tree_node, items_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(tree_node, v_),
-    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(tree_node, t_),
   };
   tree_node_reflection_ =
     ::google::protobuf::internal::GeneratedMessageReflection::NewGeneratedMessageReflection(
@@ -106,11 +104,11 @@ void protobuf_AddDesc_protobuf_2fannoy_2eproto() {
   GOOGLE_PROTOBUF_VERIFY_VERSION;
 
   ::google::protobuf::DescriptorPool::InternalAddGeneratedFile(
-    "\n\024protobuf/annoy.proto\";\n\tdata_info\022\020\n\004d"
-    "ata\030\001 \003(\002B\002\020\001\022\n\n\002id\030\002 \001(\r\022\020\n\010category\030\003 "
-    "\001(\r\"n\n\ttree_node\022\r\n\005index\030\001 \002(\r\022\014\n\004leaf\030"
-    "\002 \002(\010\022\014\n\004left\030\003 \001(\r\022\r\n\005right\030\004 \001(\r\022\r\n\005it"
-    "ems\030\005 \003(\r\022\r\n\001v\030\006 \003(\002B\002\020\001\022\t\n\001t\030\007 \001(\002", 195);
+    "\n\024protobuf/annoy.proto\")\n\tdata_info\022\020\n\004d"
+    "ata\030\001 \003(\002B\002\020\001\022\n\n\002id\030\002 \001(\r\"c\n\ttree_node\022\r"
+    "\n\005index\030\001 \002(\r\022\014\n\004leaf\030\002 \002(\010\022\014\n\004left\030\003 \001("
+    "\r\022\r\n\005right\030\004 \001(\r\022\r\n\005items\030\005 \003(\r\022\r\n\001v\030\006 \003"
+    "(\002B\002\020\001", 166);
   ::google::protobuf::MessageFactory::InternalRegisterGeneratedFile(
     "protobuf/annoy.proto", &protobuf_RegisterTypes);
   data_info::default_instance_ = new data_info();
@@ -142,7 +140,6 @@ static void MergeFromFail(int line) {
 #if !defined(_MSC_VER) || _MSC_VER >= 1900
 const int data_info::kDataFieldNumber;
 const int data_info::kIdFieldNumber;
-const int data_info::kCategoryFieldNumber;
 #endif  // !defined(_MSC_VER) || _MSC_VER >= 1900
 
 data_info::data_info()
@@ -165,7 +162,6 @@ data_info::data_info(const data_info& from)
 void data_info::SharedCtor() {
   _cached_size_ = 0;
   id_ = 0u;
-  category_ = 0u;
   ::memset(_has_bits_, 0, sizeof(_has_bits_));
 }
 
@@ -205,19 +201,7 @@ data_info* data_info::New(::google::protobuf::Arena* arena) const {
 }
 
 void data_info::Clear() {
-#define ZR_HELPER_(f) reinterpret_cast<char*>(\
-  &reinterpret_cast<data_info*>(16)->f)
-
-#define ZR_(first, last) do {\
-  ::memset(&first, 0,\
-           ZR_HELPER_(last) - ZR_HELPER_(first) + sizeof(last));\
-} while (0)
-
-  ZR_(id_, category_);
-
-#undef ZR_HELPER_
-#undef ZR_
-
+  id_ = 0u;
   data_.Clear();
   ::memset(_has_bits_, 0, sizeof(_has_bits_));
   if (_internal_metadata_.have_unknown_fields()) {
@@ -260,21 +244,6 @@ bool data_info::MergePartialFromCodedStream(
                    ::google::protobuf::uint32, ::google::protobuf::internal::WireFormatLite::TYPE_UINT32>(
                  input, &id_)));
           set_has_id();
-        } else {
-          goto handle_unusual;
-        }
-        if (input->ExpectTag(24)) goto parse_category;
-        break;
-      }
-
-      // optional uint32 category = 3;
-      case 3: {
-        if (tag == 24) {
-         parse_category:
-          DO_((::google::protobuf::internal::WireFormatLite::ReadPrimitive<
-                   ::google::protobuf::uint32, ::google::protobuf::internal::WireFormatLite::TYPE_UINT32>(
-                 input, &category_)));
-          set_has_category();
         } else {
           goto handle_unusual;
         }
@@ -322,11 +291,6 @@ void data_info::SerializeWithCachedSizes(
     ::google::protobuf::internal::WireFormatLite::WriteUInt32(2, this->id(), output);
   }
 
-  // optional uint32 category = 3;
-  if (has_category()) {
-    ::google::protobuf::internal::WireFormatLite::WriteUInt32(3, this->category(), output);
-  }
-
   if (_internal_metadata_.have_unknown_fields()) {
     ::google::protobuf::internal::WireFormat::SerializeUnknownFields(
         unknown_fields(), output);
@@ -356,11 +320,6 @@ void data_info::SerializeWithCachedSizes(
     target = ::google::protobuf::internal::WireFormatLite::WriteUInt32ToArray(2, this->id(), target);
   }
 
-  // optional uint32 category = 3;
-  if (has_category()) {
-    target = ::google::protobuf::internal::WireFormatLite::WriteUInt32ToArray(3, this->category(), target);
-  }
-
   if (_internal_metadata_.have_unknown_fields()) {
     target = ::google::protobuf::internal::WireFormat::SerializeUnknownFieldsToArray(
         unknown_fields(), target);
@@ -372,22 +331,13 @@ void data_info::SerializeWithCachedSizes(
 int data_info::ByteSize() const {
   int total_size = 0;
 
-  if (_has_bits_[1 / 32] & 6u) {
-    // optional uint32 id = 2;
-    if (has_id()) {
-      total_size += 1 +
-        ::google::protobuf::internal::WireFormatLite::UInt32Size(
-          this->id());
-    }
-
-    // optional uint32 category = 3;
-    if (has_category()) {
-      total_size += 1 +
-        ::google::protobuf::internal::WireFormatLite::UInt32Size(
-          this->category());
-    }
-
+  // optional uint32 id = 2;
+  if (has_id()) {
+    total_size += 1 +
+      ::google::protobuf::internal::WireFormatLite::UInt32Size(
+        this->id());
   }
+
   // repeated float data = 1 [packed = true];
   {
     int data_size = 0;
@@ -432,9 +382,6 @@ void data_info::MergeFrom(const data_info& from) {
     if (from.has_id()) {
       set_id(from.id());
     }
-    if (from.has_category()) {
-      set_category(from.category());
-    }
   }
   if (from._internal_metadata_.have_unknown_fields()) {
     mutable_unknown_fields()->MergeFrom(from.unknown_fields());
@@ -465,7 +412,6 @@ void data_info::Swap(data_info* other) {
 void data_info::InternalSwap(data_info* other) {
   data_.UnsafeArenaSwap(&other->data_);
   std::swap(id_, other->id_);
-  std::swap(category_, other->category_);
   std::swap(_has_bits_[0], other->_has_bits_[0]);
   _internal_metadata_.Swap(&other->_internal_metadata_);
   std::swap(_cached_size_, other->_cached_size_);
@@ -536,30 +482,6 @@ void data_info::clear_id() {
   // @@protoc_insertion_point(field_set:data_info.id)
 }
 
-// optional uint32 category = 3;
-bool data_info::has_category() const {
-  return (_has_bits_[0] & 0x00000004u) != 0;
-}
-void data_info::set_has_category() {
-  _has_bits_[0] |= 0x00000004u;
-}
-void data_info::clear_has_category() {
-  _has_bits_[0] &= ~0x00000004u;
-}
-void data_info::clear_category() {
-  category_ = 0u;
-  clear_has_category();
-}
- ::google::protobuf::uint32 data_info::category() const {
-  // @@protoc_insertion_point(field_get:data_info.category)
-  return category_;
-}
- void data_info::set_category(::google::protobuf::uint32 value) {
-  set_has_category();
-  category_ = value;
-  // @@protoc_insertion_point(field_set:data_info.category)
-}
-
 #endif  // PROTOBUF_INLINE_NOT_IN_HEADERS
 
 // ===================================================================
@@ -571,7 +493,6 @@ const int tree_node::kLeftFieldNumber;
 const int tree_node::kRightFieldNumber;
 const int tree_node::kItemsFieldNumber;
 const int tree_node::kVFieldNumber;
-const int tree_node::kTFieldNumber;
 #endif  // !defined(_MSC_VER) || _MSC_VER >= 1900
 
 tree_node::tree_node()
@@ -597,7 +518,6 @@ void tree_node::SharedCtor() {
   leaf_ = false;
   left_ = 0u;
   right_ = 0u;
-  t_ = 0;
   ::memset(_has_bits_, 0, sizeof(_has_bits_));
 }
 
@@ -645,10 +565,7 @@ void tree_node::Clear() {
            ZR_HELPER_(last) - ZR_HELPER_(first) + sizeof(last));\
 } while (0)
 
-  if (_has_bits_[0 / 32] & 79u) {
-    ZR_(index_, right_);
-    t_ = 0;
-  }
+  ZR_(index_, right_);
 
 #undef ZR_HELPER_
 #undef ZR_
@@ -763,21 +680,6 @@ bool tree_node::MergePartialFromCodedStream(
         } else {
           goto handle_unusual;
         }
-        if (input->ExpectTag(61)) goto parse_t;
-        break;
-      }
-
-      // optional float t = 7;
-      case 7: {
-        if (tag == 61) {
-         parse_t:
-          DO_((::google::protobuf::internal::WireFormatLite::ReadPrimitive<
-                   float, ::google::protobuf::internal::WireFormatLite::TYPE_FLOAT>(
-                 input, &t_)));
-          set_has_t();
-        } else {
-          goto handle_unusual;
-        }
         if (input->ExpectAtEnd()) goto success;
         break;
       }
@@ -843,11 +745,6 @@ void tree_node::SerializeWithCachedSizes(
       this->v(i), output);
   }
 
-  // optional float t = 7;
-  if (has_t()) {
-    ::google::protobuf::internal::WireFormatLite::WriteFloat(7, this->t(), output);
-  }
-
   if (_internal_metadata_.have_unknown_fields()) {
     ::google::protobuf::internal::WireFormat::SerializeUnknownFields(
         unknown_fields(), output);
@@ -898,11 +795,6 @@ void tree_node::SerializeWithCachedSizes(
       WriteFloatNoTagToArray(this->v(i), target);
   }
 
-  // optional float t = 7;
-  if (has_t()) {
-    target = ::google::protobuf::internal::WireFormatLite::WriteFloatToArray(7, this->t(), target);
-  }
-
   if (_internal_metadata_.have_unknown_fields()) {
     target = ::google::protobuf::internal::WireFormat::SerializeUnknownFieldsToArray(
         unknown_fields(), target);
@@ -943,7 +835,7 @@ int tree_node::ByteSize() const {
   } else {
     total_size += RequiredFieldsByteSizeFallback();
   }
-  if (_has_bits_[2 / 32] & 76u) {
+  if (_has_bits_[2 / 32] & 12u) {
     // optional uint32 left = 3;
     if (has_left()) {
       total_size += 1 +
@@ -956,11 +848,6 @@ int tree_node::ByteSize() const {
       total_size += 1 +
         ::google::protobuf::internal::WireFormatLite::UInt32Size(
           this->right());
-    }
-
-    // optional float t = 7;
-    if (has_t()) {
-      total_size += 1 + 4;
     }
 
   }
@@ -1028,9 +915,6 @@ void tree_node::MergeFrom(const tree_node& from) {
     if (from.has_right()) {
       set_right(from.right());
     }
-    if (from.has_t()) {
-      set_t(from.t());
-    }
   }
   if (from._internal_metadata_.have_unknown_fields()) {
     mutable_unknown_fields()->MergeFrom(from.unknown_fields());
@@ -1066,7 +950,6 @@ void tree_node::InternalSwap(tree_node* other) {
   std::swap(right_, other->right_);
   items_.UnsafeArenaSwap(&other->items_);
   v_.UnsafeArenaSwap(&other->v_);
-  std::swap(t_, other->t_);
   std::swap(_has_bits_[0], other->_has_bits_[0]);
   _internal_metadata_.Swap(&other->_internal_metadata_);
   std::swap(_cached_size_, other->_cached_size_);
@@ -1237,30 +1120,6 @@ tree_node::v() const {
 tree_node::mutable_v() {
   // @@protoc_insertion_point(field_mutable_list:tree_node.v)
   return &v_;
-}
-
-// optional float t = 7;
-bool tree_node::has_t() const {
-  return (_has_bits_[0] & 0x00000040u) != 0;
-}
-void tree_node::set_has_t() {
-  _has_bits_[0] |= 0x00000040u;
-}
-void tree_node::clear_has_t() {
-  _has_bits_[0] &= ~0x00000040u;
-}
-void tree_node::clear_t() {
-  t_ = 0;
-  clear_has_t();
-}
- float tree_node::t() const {
-  // @@protoc_insertion_point(field_get:tree_node.t)
-  return t_;
-}
- void tree_node::set_t(float value) {
-  set_has_t();
-  t_ = value;
-  // @@protoc_insertion_point(field_set:tree_node.t)
 }
 
 #endif  // PROTOBUF_INLINE_NOT_IN_HEADERS

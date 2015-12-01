@@ -122,19 +122,10 @@ class data_info : public ::google::protobuf::Message {
   ::google::protobuf::uint32 id() const;
   void set_id(::google::protobuf::uint32 value);
 
-  // optional uint32 category = 3;
-  bool has_category() const;
-  void clear_category();
-  static const int kCategoryFieldNumber = 3;
-  ::google::protobuf::uint32 category() const;
-  void set_category(::google::protobuf::uint32 value);
-
   // @@protoc_insertion_point(class_scope:data_info)
  private:
   inline void set_has_id();
   inline void clear_has_id();
-  inline void set_has_category();
-  inline void clear_has_category();
 
   ::google::protobuf::internal::InternalMetadataWithArena _internal_metadata_;
   ::google::protobuf::uint32 _has_bits_[1];
@@ -142,7 +133,6 @@ class data_info : public ::google::protobuf::Message {
   ::google::protobuf::RepeatedField< float > data_;
   mutable int _data_cached_byte_size_;
   ::google::protobuf::uint32 id_;
-  ::google::protobuf::uint32 category_;
   friend void  protobuf_AddDesc_protobuf_2fannoy_2eproto();
   friend void protobuf_AssignDesc_protobuf_2fannoy_2eproto();
   friend void protobuf_ShutdownFile_protobuf_2fannoy_2eproto();
@@ -268,13 +258,6 @@ class tree_node : public ::google::protobuf::Message {
   ::google::protobuf::RepeatedField< float >*
       mutable_v();
 
-  // optional float t = 7;
-  bool has_t() const;
-  void clear_t();
-  static const int kTFieldNumber = 7;
-  float t() const;
-  void set_t(float value);
-
   // @@protoc_insertion_point(class_scope:tree_node)
  private:
   inline void set_has_index();
@@ -285,8 +268,6 @@ class tree_node : public ::google::protobuf::Message {
   inline void clear_has_left();
   inline void set_has_right();
   inline void clear_has_right();
-  inline void set_has_t();
-  inline void clear_has_t();
 
   // helper for ByteSize()
   int RequiredFieldsByteSizeFallback() const;
@@ -301,7 +282,6 @@ class tree_node : public ::google::protobuf::Message {
   ::google::protobuf::RepeatedField< ::google::protobuf::uint32 > items_;
   ::google::protobuf::RepeatedField< float > v_;
   mutable int _v_cached_byte_size_;
-  float t_;
   friend void  protobuf_AddDesc_protobuf_2fannoy_2eproto();
   friend void protobuf_AssignDesc_protobuf_2fannoy_2eproto();
   friend void protobuf_ShutdownFile_protobuf_2fannoy_2eproto();
@@ -369,30 +349,6 @@ inline void data_info::set_id(::google::protobuf::uint32 value) {
   set_has_id();
   id_ = value;
   // @@protoc_insertion_point(field_set:data_info.id)
-}
-
-// optional uint32 category = 3;
-inline bool data_info::has_category() const {
-  return (_has_bits_[0] & 0x00000004u) != 0;
-}
-inline void data_info::set_has_category() {
-  _has_bits_[0] |= 0x00000004u;
-}
-inline void data_info::clear_has_category() {
-  _has_bits_[0] &= ~0x00000004u;
-}
-inline void data_info::clear_category() {
-  category_ = 0u;
-  clear_has_category();
-}
-inline ::google::protobuf::uint32 data_info::category() const {
-  // @@protoc_insertion_point(field_get:data_info.category)
-  return category_;
-}
-inline void data_info::set_category(::google::protobuf::uint32 value) {
-  set_has_category();
-  category_ = value;
-  // @@protoc_insertion_point(field_set:data_info.category)
 }
 
 // -------------------------------------------------------------------
@@ -553,30 +509,6 @@ inline ::google::protobuf::RepeatedField< float >*
 tree_node::mutable_v() {
   // @@protoc_insertion_point(field_mutable_list:tree_node.v)
   return &v_;
-}
-
-// optional float t = 7;
-inline bool tree_node::has_t() const {
-  return (_has_bits_[0] & 0x00000040u) != 0;
-}
-inline void tree_node::set_has_t() {
-  _has_bits_[0] |= 0x00000040u;
-}
-inline void tree_node::clear_has_t() {
-  _has_bits_[0] &= ~0x00000040u;
-}
-inline void tree_node::clear_t() {
-  t_ = 0;
-  clear_has_t();
-}
-inline float tree_node::t() const {
-  // @@protoc_insertion_point(field_get:tree_node.t)
-  return t_;
-}
-inline void tree_node::set_t(float value) {
-  set_has_t();
-  t_ = value;
-  // @@protoc_insertion_point(field_set:tree_node.t)
 }
 
 #endif  // !PROTOBUF_INLINE_NOT_IN_HEADERS

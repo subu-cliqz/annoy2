@@ -422,7 +422,7 @@ class AnnoyIndex : public AnnoyIndexInterface<S, T> {
       int concurrency = thread::hardware_concurrency();
       for (int i = 0; i < _tree_count; i += concurrency) {
         for(int j = i; j < std::min(_tree_count, concurrency); j++) {
-          t.push_back(thread(&AnnoyIndex::_add_item_to_tree, this, j, data_id, std::ref(d)));
+          t.push_back(thread(&AnnoyIndex::_add_item_to_tree, this, j, data_id, std::ref(d))); 
           if(t[j].joinable()) {
             t[j].join();
           }
@@ -741,7 +741,7 @@ class AnnoyIndex : public AnnoyIndexInterface<S, T> {
         return true;
         
     }
-
+       
     
     bool _get_raw_data(int data_id,  data_info & rdata ) {
  

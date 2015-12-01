@@ -77,10 +77,6 @@ py_an_init(py_annoy *self, PyObject *args, PyObject *kwds) {
     self->ptr = new AnnoyIndex<int32_t, float, Angular, Kiss64Random>(self->f, self->K,  
       self->tree_count, file_dir, self->max_reader, self->max_size, self->read_only);
     break;
-  case 'e':
-    self->ptr = new AnnoyIndex<int32_t, float, Euclidean, Kiss64Random>(self->f,self->K,  
-      self->tree_count, file_dir, self->max_reader, self->max_size, self->read_only);
-    break;
   }
   return 0;
 }

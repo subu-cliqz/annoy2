@@ -21,6 +21,7 @@ import numpy
 from annoy import AnnoyIndex
 import os
 import math
+import time
 try:
     xrange
 except NameError:
@@ -42,7 +43,7 @@ class AngularIndexTest(TestCase):
         
         f = 2   
         i = AnnoyIndex(f,  2, "test_db", 64,  1000, 3048576000, 0)
-        i.verbose(True)
+        # i.verbose(True)
         i.add_item(0, [0, 1])
         i.add_item(1, [1, 1])
 
@@ -123,35 +124,40 @@ class AngularIndexTest(TestCase):
 
     def test_large_index(self):
         print "test_large_index"
+        start_time = int(round(time.time() * 1000))
+
         os.system("rm -rf test_db")
         os.system("mkdir test_db")
         # Generate pairs of random points where the pair is super close
-        f = 10
+        f = 100
         i = AnnoyIndex(f, 12, "test_db", 10,  1000, 3048576000, 0)
-        for j in xrange(0, 10000, 2):
+        # i.verbose(True)
+        for j in xrange(0, 100, 2):
             p = [random.gauss(0, 1) for z in xrange(f)]
             f1 = random.random() + 1
             f2 = random.random() + 1
             x = [f1 * pi + random.gauss(0, 1e-2) for pi in p]
             y = [f2 * pi + random.gauss(0, 1e-2) for pi in p]
             i.add_item(j, x)
+
             i.add_item(j+1, y)
-        
         i = AnnoyIndex(f, 12, "test_db", 10,  1000, 3048576000, 1)
-        for j in xrange(0, 10000, 2):
+        for j in xrange(0, 100, 2):
             self.assertEqual(i.get_nns_by_item(j, 2, 50), [j, j+1])
             self.assertEqual(i.get_nns_by_item(j+1, 2, 50), [j+1, j])
+        print "Total time = ",  (int(round(time.time() * 1000)) - start_time)/1000
             
-    def test_large_index_batch(self):
+    def t1est_large_index_batch(self):
         print "test_large_index_batch"
+        start_time = int(round(time.time() * 1000))
         os.system("rm -rf test_db")
         os.system("mkdir test_db")
         # Generate pairs of random points where the pair is super close
-        f = 10
-        i = AnnoyIndex(f, 12, "test_db", 1,  1000, 3048576000, 0)
+        f = 100
+        i = AnnoyIndex(f, 12, "test_db", 10,  1000, 3048576000, 0)
         i_v = []
         v_v = []
-        for j in xrange(0, 10000, 2):
+        for j in xrange(0, 100000, 2):
             p = [random.gauss(0, 1) for z in xrange(f)]
             f1 = random.random() + 1
             f2 = random.random() + 1
@@ -164,10 +170,11 @@ class AngularIndexTest(TestCase):
         
         i.add_item_batch(i_v, v_v)
 
-        i = AnnoyIndex(f, 12, "test_db", 1,  1000, 3048576000, 1)
-        for j in xrange(0, 10000, 2):
+        i = AnnoyIndex(f, 12, "test_db", 10,  1000, 3048576000, 1)
+        for j in xrange(0, 100000, 2):
             self.assertEqual(i.get_nns_by_item(j, 2, 50), [j, j+1])
             self.assertEqual(i.get_nns_by_item(j+1, 2, 50), [j+1, j])
+        print "Total time = ",  (int(round(time.time() * 1000)) - start_time)/1000
 
     def precision(self, n, n_trees=10, n_points=10000, n_rounds=10):
         found = 0

@@ -33,21 +33,26 @@ class AccuracyTest(unittest.TestCase):
         if not os.path.exists(output):
             if not os.path.exists(input):
                 # Download GloVe pretrained vectors: http://nlp.stanford.edu/projects/glove/
-                url = 'http://www-nlp.stanford.edu/data/glove.twitter.27B.%dd.txt.gz' % f
+                # Hosting them on my own S3 bucket since the original files changed format
+                url = 'https://s3-us-west-1.amazonaws.com/annoy-vectors/glove.twitter.27B.%dd.txt.gz' % f
                 print('downloading', url, '->', input)
                 urlretrieve(url, input)
 
             print('building index', distance, f)
-            annoy = AnnoyIndex(f, distance)
+            annoy =  AnnoyIndex(f, 12, "test_db", 10,  1000, 3048576000, 0)
+            v_v = []
+            items = []
             for i, line in enumerate(gzip.open(input, 'rb')):
                 v = [float(x) for x in line.strip().split()[1:]]
-                annoy.add_item(i, v);
-                
-            annoy.build(10)
-            annoy.save(output)
-
-        annoy = AnnoyIndex(f, distance)
-        annoy.load(output)
+                v_v.append(v)
+                items.append(i)
+                if (i+1) % 10000 == 0:
+                    print (i+1)
+                    annoy.add_item_batch(items, v_v)
+                    v_v = []
+                    items = []
+            if v_v:
+                annoy.add_item_batch(items, v_v)
         return annoy
 
     def _test_index(self, f, distance, exp_accuracy):
@@ -56,7 +61,7 @@ class AccuracyTest(unittest.TestCase):
         n, k = 0, 0
 
         for i in range(10000):
-            js_fast = annoy.get_nns_by_item(i, 11)[1:]
+            js_fast = annoy.get_nns_by_item(i, 11, 1000)[1:]
             js_slow = annoy.get_nns_by_item(i, 11, 10000)[1:]
             assert len(js_fast) == 10
             assert len(js_slow) == 10
@@ -72,29 +77,20 @@ class AccuracyTest(unittest.TestCase):
     def test_angular_25(self):
         self._test_index(25, 'angular', 46.80)
 
-    def test_euclidean_25(self):
-        self._test_index(25, 'euclidean', 47.34)
-
     @attr('slow')
     def test_angular_50(self):
         self._test_index(50, 'angular', 31.00)
-
-    @attr('slow')
-    def test_euclidean_50(self):
-        self._test_index(50, 'euclidean', 33.04)
 
     @attr('slow')
     def test_angular_100(self):
         self._test_index(100, 'angular', 24.50)
 
     @attr('slow')
-    def test_euclidean_100(self):
-        self._test_index(100, 'euclidean', 25.10)
-
-    @attr('slow')
     def test_angular_200(self):
         self._test_index(200, 'angular', 15.18)
 
-    @attr('slow')
-    def test_euclidean_200(self):
-        self._test_index(200, 'euclidean', 17.99)        
+if __name__ == '__main__':
+    os.system("rm -rf test_db")
+    os.system("mkdir test_db")
+    unittest.main()
+    os.system("rm -rf test_db")
