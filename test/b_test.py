@@ -122,15 +122,15 @@ class AngularIndexTest(TestCase):
         self.assertEqual(i.get_nns_by_item(1, 3), [1, 0, 2])
         self.assertTrue(i.get_nns_by_item(2, 3) in [[2, 0, 1], [2, 1, 0]]) # could be either
 
-    def t1est_large_index(self):
+    def test_large_index(self):
         print "test_large_index"
         start_time = int(round(time.time() * 1000))
 
         os.system("rm -rf test_db")
         os.system("mkdir test_db")
         # Generate pairs of random points where the pair is super close
-        f = 100
-        i = AnnoyIndex(f, 12, "test_db", 10,  1000, 3048576000, 0)
+        f = 2
+        i = AnnoyIndex(f, 10, "test_db", 2,  1000, 3048576000, 0)
         # i.verbose(True)
         for j in xrange(0, 1000000, 2):
             p = [random.gauss(0, 1) for z in xrange(f)]
@@ -147,7 +147,7 @@ class AngularIndexTest(TestCase):
         #     self.assertEqual(i.get_nns_by_item(j+1, 2, 50), [j+1, j])
         print "Total time = ",  (int(round(time.time() * 1000)) - start_time)/1000
             
-    def test_large_index_batch(self):
+    def t1est_large_index_batch(self):
         print "test_large_index_batch"
         start_time = int(round(time.time() * 1000))
         os.system("rm -rf test_db")

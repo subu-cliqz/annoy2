@@ -186,11 +186,12 @@ struct Angular {
 
   static inline T margin(const tree_node& tn, data_info& y, int f) {
     T dot = 0;
-    for (int z = 0; z < f; z++) {
-      dot += tn.v(z) * y.data(z);
-    }
+    // for (int z = 0; z < f; z++) {
+    //   printf("IN margin z = %d, val = %f\n", z, tn.v(z));
+    //   dot += tn.v(z) * y.data(z);
+    // }
    // dot += tn.t();
-    return dot;
+    return 0.5;
   }
 
   static inline T margin(const Node* n, const T* y, int f) {
@@ -248,8 +249,8 @@ struct Angular {
     // Sample two random points from the set of nodes
     // Calculate the hyperplane equidistant from them
     size_t count = nodes.size();
-    size_t i = random.index(count);
-    size_t j = random.index(count-1);
+    size_t i = 5;//random.index(count);
+    size_t j = 6;//random.index(count-1);
     j += (j >= i); // ensure that i != j
     
     //printf("use data %d and %d as pivot for splitting ... ", i, j);
@@ -257,12 +258,14 @@ struct Angular {
     data_info iv = nodes[i];
     data_info jv = nodes[j];
 
-    //iv.PrintDebugString();
-    //jv.PrintDebugString();
+    iv.PrintDebugString();
+    jv.PrintDebugString();
     
     T i_norm = get_norm1(iv, f);
     T j_norm = get_norm1(jv, f);
     
+    printf("i_norm = %f\n", i_norm);
+    printf("j_norm = %f\n", j_norm); 
     float squared_sum = 0;
     for (int z = 0; z < f; z++) {
       T d = iv.data(z) / i_norm - jv.data(z) / j_norm;
@@ -281,6 +284,7 @@ struct Angular {
       data_info d = nodes[w];
       for (int s = 0; s < f; s ++) {
         w_data[s] = d.data(s);
+        printf("w(%d)-data[%d] = %f\n", w, s, w_data[s]);
       }
 
 

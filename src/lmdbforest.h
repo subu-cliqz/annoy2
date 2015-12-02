@@ -98,9 +98,11 @@ class AnnoyIndex : public AnnoyIndexInterface<S, T> {
     
   protected:
     MDB_env* _env;
+    MDB_env** _env_batch;
     MDB_dbi _dbi_raw;
     MDB_dbi* _dbi_tree;
     MDB_txn* _txn;
+    MDB_txn** _txn_batch;
   
     int _f ; // the dimension of data
     int _tree_count; //number of trees;
@@ -121,11 +123,13 @@ class AnnoyIndex : public AnnoyIndexInterface<S, T> {
       _K = K;
       _verbose = false;
 
+      _env_batch = new MDB_env*[_tree_count]();
+      _txn_batch = new MDB_txn*[_tree_count]();
+      _dbi_tree = new MDB_dbi[_tree_count]();     
       //for lmdb usage
       _env = NULL;
       _txn = NULL;
 
-      _dbi_tree = new MDB_dbi[_tree_count]();
       if (read_only == 1) {
         open_as_read(dir, maxreaders);
       } else {
@@ -138,6 +142,8 @@ class AnnoyIndex : public AnnoyIndexInterface<S, T> {
     
     ~AnnoyIndex(){
       delete [] _dbi_tree;
+      delete [] _env_batch;
+      delete [] _txn_batch;
     }
 
     bool open_as_read(const char* database_directory, int maxreaders) {
@@ -163,6 +169,14 @@ class AnnoyIndex : public AnnoyIndexInterface<S, T> {
       E(mdb_env_set_mapsize(_env, maxsize));
       E(mdb_env_set_maxdbs(_env, 100));
       E(mdb_env_open(_env, database_directory, MDB_WRITEMAP, 0664));
+      
+      for (int i = 0; i < _tree_count; i ++) {
+        E(mdb_env_create(&_env_batch[i]));
+        E(mdb_env_set_maxreaders(_env_batch[i], maxreaders));
+        E(mdb_env_set_mapsize(_env_batch[i], maxsize));
+        E(mdb_env_set_maxdbs(_env_batch[i], 100));
+        E(mdb_env_open(_env_batch[i], database_directory, MDB_WRITEMAP, 0664));        
+      }
       for (int i = 0; i < _tree_count; i ++)
       {
         _roots.push_back(i);  
@@ -179,6 +193,11 @@ class AnnoyIndex : public AnnoyIndexInterface<S, T> {
       if (_env != NULL) {
           mdb_env_close(_env);
           _env = NULL;
+          for (int i = 0; i < _tree_count; i ++) {
+           mdb_env_close(_env_batch[i]);
+          }
+          delete [] _env_batch;
+          _env_batch = new MDB_env*[_tree_count]();
       }
       return true;
     }
@@ -416,28 +435,48 @@ class AnnoyIndex : public AnnoyIndexInterface<S, T> {
 
     void add_item(int data_id, data_info& d) {
 
-      E(mdb_txn_begin(_env, NULL, 0, &_txn));
+      // Make sure to commit new item to raw db.
+      E(mdb_txn_begin(_env, NULL, 0, &_txn));      
       E(mdb_dbi_open(_txn, DBN_RAW, MDB_CREATE | MDB_INTEGERKEY, &_dbi_raw));
-      
-      for(int i = 0; i < _tree_count; i++) {
-        E(mdb_dbi_open(_txn, DBN_TREE(i), MDB_CREATE | MDB_INTEGERKEY, &_dbi_tree[i]));
-      }
       d.set_id(data_id);
       _add_raw_data(data_id, d);
+      mdb_txn_commit(_txn);
       
+      if  (_verbose) {
+        printf("Committed data %d to raw db\n", data_id);
+      }      
+      // Use a separate environment for every tree / thread.
+      for(int i = 0; i < _tree_count; i++) {
+        E(mdb_txn_begin(_env_batch[i], NULL, 0, &_txn_batch[i]));
+        E(mdb_dbi_open(_txn_batch[i], DBN_TREE(i), MDB_CREATE | MDB_INTEGERKEY, &_dbi_tree[i]));
+        E(mdb_dbi_open(_txn_batch[i], DBN_RAW, MDB_CREATE | MDB_INTEGERKEY, &_dbi_raw));
+      }
+
+      if  (_verbose) {
+        printf("Created separate transactions for every tree\n");
+      }   
       //TODO: Implement some sort of thread pooling here.
       vector<thread> t;
       int concurrency = thread::hardware_concurrency();
       for (int i = 0; i < _tree_count; i += concurrency) {
         for(int j = i; j < std::min(_tree_count, concurrency); j++) {
-          t.push_back(thread(&AnnoyIndex::_add_item_to_tree, this, j, 0, data_id, std::ref(d))); 
+          t.push_back(thread(&AnnoyIndex::_add_item_to_tree, this, j, 0, data_id, std::ref(d)));
+        }
+        for(int j = i; j < std::min(_tree_count, concurrency); j++) {         
           if(t[j].joinable()) {
             t[j].join();
           }
         }
       }
-       
-      mdb_txn_commit(_txn);
+ 
+      for(int i = 0; i < _tree_count; i++) {      
+        mdb_txn_commit(_txn_batch[i]);
+      }
+ 
+      if  (_verbose) {
+        printf("Commited item to all trees\n");
+      }  
+           
       return;
     }
     
@@ -500,31 +539,32 @@ class AnnoyIndex : public AnnoyIndexInterface<S, T> {
     void _add_item_to_tree(int tree_index, int node_index, int data_id, data_info& data) {
       //check node type  
       tree_node tn;
-      bool result = _get_node_by_index(tree_index, node_index, tn);  
+      bool result = _get_node_by_index(tree_index, node_index, tn, true);  
       if (!result)  {
-        printf("ERROR: can not insert new item into node %d \n", node_index);
+        printf("ERROR: can not insert new item into tree %d, node %d \n", tree_index, node_index);
         return;
       }
       
       if (_verbose) {
-        printf("add item %d to tree node %d... \n", data_id, node_index); fflush(stdout);
+        printf("add item %d to tree %d node %d... \n", data_id, tree_index, node_index); fflush(stdout);
       }
       
       if (tn.leaf() && tn.items_size() < _K) {
         tn.add_items(data_id);
-        _update_tree_node(tree_index, node_index, tn); 
+        _update_tree_node(tree_index, node_index, tn, true); 
         if (_verbose) {
-          printf("add item %d node %d directly\n ", data_id, node_index); fflush(stdout);
+          printf("add item %d to tree %d node %d directly\n ", data_id, tree_index, node_index); fflush(stdout);
         }
         return ;
       }
 
+      printf("*********************************************\n");
       if (tn.leaf() && tn.items_size() >= _K) {
         //split
         vector<data_info> data_pt;      
         for (int k = 0; k < tn.items_size(); k ++) {         
           data_info d;
-          _get_raw_data(tn.items(k), d);
+          _get_raw_data(tn.items(k), d, tree_index, true);
           data_pt.push_back(d);
         }
         
@@ -545,14 +585,14 @@ class AnnoyIndex : public AnnoyIndexInterface<S, T> {
         }
          
 
-        int left_index = _add_node(tree_index, left_node);
-        int right_index = _add_node(tree_index, right_node);
+        int left_index = _add_node(tree_index, left_node, true);
+        int right_index = _add_node(tree_index, right_node, true);
         new_node.set_left(left_index);
         new_node.set_right(right_index);
         new_node.set_leaf(false);
         new_node.set_index(node_index);
-        _update_tree_node(tree_index, node_index, new_node);
-        _get_node_by_index(tree_index, node_index, tn); 
+        _update_tree_node(tree_index, node_index, new_node, true);
+        _get_node_by_index(tree_index, node_index, tn, true); 
       } 
 
       //TODO: Add check to ensure that the hyperplane split the data.
@@ -621,13 +661,17 @@ class AnnoyIndex : public AnnoyIndexInterface<S, T> {
     }
   
   
-    int _get_max_tree_index(int tree_index) {
+    int _get_max_tree_index(int tree_index, bool batch=false) {
       
         MDB_val key, data;
         MDB_cursor *cursor;
         
-        
-        E(mdb_cursor_open(_txn, _dbi_tree[tree_index], &cursor));
+        if (batch){
+         E(mdb_cursor_open(_txn_batch[tree_index], _dbi_tree[tree_index], &cursor));         
+        } else {
+         E(mdb_cursor_open(_txn, _dbi_tree[tree_index], &cursor));         
+        }
+
         rc = mdb_cursor_get(cursor, &key, &data, MDB_LAST);
 
         int index_last = 0;
@@ -638,20 +682,24 @@ class AnnoyIndex : public AnnoyIndexInterface<S, T> {
         mdb_cursor_close(cursor);
         
         if (_verbose) {
-          printf("found the last index is %d \n", index_last);
+          printf("found the last index for tree %d is %d \n", tree_index, index_last);
         }
 
 
         return index_last;
 
     }
-    int _get_max_data_index() {
+    int _get_max_data_index(int tree_index = 0, bool batch=false) {
       
         MDB_val key, data;
         MDB_cursor *cursor;
         
-        
-        E(mdb_cursor_open(_txn, _dbi_raw, &cursor));
+        if (batch) {
+         E(mdb_cursor_open(_txn_batch[tree_index], _dbi_raw, &cursor));         
+        } else {
+         E(mdb_cursor_open(_txn, _dbi_raw, &cursor));         
+        }
+
         rc = mdb_cursor_get(cursor, &key, &data, MDB_LAST);
 
         int index_last = 0;
@@ -671,16 +719,16 @@ class AnnoyIndex : public AnnoyIndexInterface<S, T> {
     }
     
     
-    int _add_node(int tree_index, tree_node & tn) {
+    int _add_node(int tree_index, tree_node & tn, bool batch=false) {
         
         //get the largest index
-        int max_index = _get_max_tree_index(tree_index);
+        int max_index = _get_max_tree_index(tree_index, batch);
 
         if (_verbose) {
           printf("adding node %d : ", max_index + 1);
         }
         tn.set_index(max_index + 1);
-        bool result = _update_tree_node(tree_index, max_index + 1, tn);       
+        bool result = _update_tree_node(tree_index, max_index + 1, tn, batch);       
        //max_index = _get_max_tree_index();
         if (result)
           return max_index + 1;
@@ -688,7 +736,7 @@ class AnnoyIndex : public AnnoyIndexInterface<S, T> {
         
     }
     
-    bool _update_tree_node(int tree_index, int index, tree_node & tn) {
+    bool _update_tree_node(int tree_index, int index, tree_node & tn, bool batch=false) {
         int success = 0;
         MDB_val key, data;
         
@@ -701,8 +749,18 @@ class AnnoyIndex : public AnnoyIndexInterface<S, T> {
         data.mv_size = data_buffer.length();
         data.mv_data = (uint8_t*)data_buffer.c_str();
 
-        
-        int retval = mdb_put(_txn, _dbi_tree[tree_index], &key, &data, 0);
+        int retval = -1;
+        if (batch){      
+            printf("Trying to put item %d into tree %d , keysize: %d, datasize:%d : key: %p %.*s, data: %p %.*s\n",
+            index, tree_index,
+            (int) key.mv_size, (int) data.mv_size, key.mv_data,  (int) key.mv_size,  (char *) key.mv_data,
+            data.mv_data, (int) data.mv_size, (char *) data.mv_data);
+          retval = mdb_put(_txn_batch[tree_index], _dbi_tree[tree_index], &key, &data, 0);
+          printf("Done\n");
+        } else {
+          retval = mdb_put(_txn, _dbi_tree[tree_index], &key, &data, 0);          
+        }
+
         
         
         if (retval == MDB_SUCCESS) {
@@ -713,9 +771,9 @@ class AnnoyIndex : public AnnoyIndexInterface<S, T> {
              */
             if (_verbose) {
               if (tn.leaf())
-                printf(" update tree leaf node  %d successfully . \n", index);
+                printf(" update tree %d leaf node  %d successfully . \n", tree_index, index);
               else 
-                printf(" update tree non-leaf node  %d successfully . \n", index);
+                printf(" update tree %d non-leaf node  %d successfully . \n", tree_index, index);
             }
             
             success = 1;
@@ -737,17 +795,22 @@ class AnnoyIndex : public AnnoyIndexInterface<S, T> {
 
     }
     
-    bool _get_node_by_index(int tree_index, int index,  tree_node & tn ) {
+    bool _get_node_by_index(int tree_index, int index,  tree_node & tn, bool batch=false) {
         
         MDB_val key, data;
         key.mv_data = (uint8_t*) & index;
         key.mv_size = sizeof(int);
-        rc = mdb_get(_txn, _dbi_tree[tree_index], &key, &data);
+        if (batch){
+          rc = mdb_get(_txn_batch[tree_index], _dbi_tree[tree_index], &key, &data);
+        } else {
+          rc = mdb_get(_txn, _dbi_tree[tree_index], &key, &data);
+        }
+
         if (rc == 0) {
             string s_data((char*) data.mv_data, data.mv_size);
             tn.ParseFromString(s_data);
         } else {
-            //printf("can not find raw image data with id: %d\n", index);
+            printf("_get_node_by_index - can not find raw image data for tree %d with id: %d\n", tree_index, index);
             return false;
         }
         return true;
@@ -755,17 +818,22 @@ class AnnoyIndex : public AnnoyIndexInterface<S, T> {
     }
        
     
-    bool _get_raw_data(int data_id,  data_info & rdata ) {
+    bool _get_raw_data(int data_id,  data_info & rdata, int tree_index = 0, bool batch=false ) {
  
         MDB_val key, data;
         key.mv_data = (uint8_t*) & data_id;
         key.mv_size = sizeof(int);
-        rc = mdb_get(_txn, _dbi_raw, &key, &data);
+        
+        if (batch){
+          rc = mdb_get(_txn_batch[tree_index], _dbi_raw, &key, &data);         
+        } else {
+          rc = mdb_get(_txn, _dbi_raw, &key, &data);          
+        }
         if (rc == 0) {
             string s_data((char*) data.mv_data, data.mv_size);
             rdata.ParseFromString(s_data);
         } else {
-            //printf("can not find raw image data with id: %d\n", image_id);
+            printf("_get_raw_data - can not find raw image data for tree %d with id: %d\n", tree_index, data_id);
             return false;
         }
         return true;
